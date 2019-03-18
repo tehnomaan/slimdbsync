@@ -48,6 +48,8 @@ public class PgAdapter implements DatabaseAdapter {
 					col.type = r.dataType.toLowerCase();
 					col.isNullable = r.isNullable;
 					col.isJson = "json".equalsIgnoreCase(r.dataType);
+					if (r.defaultValue != null && r.defaultValue.startsWith("nextval('") && r.defaultValue.endsWith("'::regclass)"))
+						col.sourceSequence = r.defaultValue.substring(9, r.defaultValue.length() - 12);
 					return col;
 				}).collect(toMap(cdef -> cdef.name, cdef -> cdef));
 	}
@@ -80,7 +82,7 @@ public class PgAdapter implements DatabaseAdapter {
 
 	@Override
 	public String addColumn(String tableName, ColumnDef column) {
-		return "ALTER TABLE \"" + tableName + "\" ADD COLUMN " + getColumnDefinition(column, false) + "\";" + ENDL;
+		return "ALTER TABLE \"" + tableName + "\" ADD COLUMN " + getColumnDefinition(column, false) + ";" + ENDL;
 	}
 
 	@Override

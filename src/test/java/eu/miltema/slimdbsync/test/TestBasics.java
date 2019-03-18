@@ -2,6 +2,9 @@ package eu.miltema.slimdbsync.test;
 
 import static org.junit.Assert.*;
 
+import java.sql.SQLException;
+import java.util.List;
+
 import org.junit.*;
 
 import eu.miltema.slimdbsync.DatabaseSync;
@@ -16,6 +19,12 @@ public class TestBasics extends AbstractDatabaseTest {
 	@Before
 	public void setup() throws Exception {
 		dropAllArtifacts();
+	}
+
+	@Test
+	public void testNoChanges() throws Exception {
+		new DatabaseSync(db).sync(SyncTypesEntity.class);
+		new DatabaseSyncEx(db, 0).sync(SyncTypesEntity.class);
 	}
 
 	@Test
@@ -34,13 +43,49 @@ public class TestBasics extends AbstractDatabaseTest {
 	}
 
 	@Test
-	public void testNoChanges() throws Exception {
-		new DatabaseSync(db).sync(SyncTypesEntity.class);
-		new DatabaseSync(db) {
-			@Override
-			protected void applyChanges(String ddlChanges) throws Exception {
-				assertTrue(ddlChanges.isEmpty());
-			}
-		}.sync(SyncTypesEntity.class);
+	public void testAddColumn() throws Exception {
+		new DatabaseSync(db).sync(SyncEntity1.class);
+		assertNotNull(db.insert(new SyncEntity1("John")));
+		new DatabaseSyncEx(db, 1).sync(SyncEntity10.class);
+		SyncEntity10 e10 = new SyncEntity10();
+		e10.name = "Jack";
+		e10.count = 15;
+		e10 = db.insert(e10);
+		List<SyncEntity10> list =  db.listAll(SyncEntity10.class);
+		assertEquals(2, list.size());
+		assertTrue(list.get(0).name.equals("John") || list.get(1).name.equals("John"));
+	}
+
+	@Test
+	public void testDropColumn() throws Exception {
+		new DatabaseSync(db).sync(SyncEntity10.class);
+		SyncEntity10 e10 = new SyncEntity10();
+		e10.name = "Jack";
+		e10.count = 15;
+		e10 = db.insert(e10);
+		new DatabaseSyncEx(db, 1).sync(SyncEntity1.class);
+		SyncEntity1 e1 = db.insert(new SyncEntity1("John"));
+		assertEquals("John", db.getById(SyncEntity1.class, e1.id).name);
+		assertNull(db.getById(SyncEntity10.class, e10.id).count);// column "count" was dropped
+	}
+
+	@Test
+	public void testDropIdColumn() throws Exception {
+		new DatabaseSync(db).sync(SyncEntity10.class);
+		new DatabaseSyncEx(db, 2).sync(SyncEntity11.class);//drop id-column and associated sequence
+	}
+	
+	@Test
+	public void testAddAndDropColumnsSimultaneously() throws Exception {
+		new DatabaseSync(db).sync(SyncEntity1.class);
+		new DatabaseSyncEx(db, 3).sync(SyncEntity11.class);//drop id-column and associated sequence; add count-column
+	}
+
+	@Test(expected = SQLException.class)
+	public void testDropTable() throws Exception {
+		new DatabaseSync(db).sync(SyncEntity1.class, SyncEntity2.class);
+		SyncEntity1 e1 = db.insert(new SyncEntity1("John"));
+		new DatabaseSync(db).sync(SyncEntity2.class);
+		db.getById(SyncEntity1.class, e1.id);
 	}
 }

@@ -1,14 +1,15 @@
 # SlimDbSync
 SlimDbSync is a lightweight and simple-to-use library for updating database according to current entity model.
 No update scripts (Java, XML, JSon) are necessary - this is different from other change management systems like Liquibase. 
-A single line of Java code is enough to configure and execute syncing.
+2 lines of Java code is enough to configure and execute syncing.
 
 # Basic Usage
 
 Establish database link:
 
 ```java
-new DatabaseSync(new Database("org.postgresql.Driver", "jdbc:postgresql://localhost:5432/demoDB", "demouser", "password")).sync(Employee.class, EmployeeDetails.class);
+Database db = new Database("org.postgresql.Driver", "jdbc:postgresql://localhost:5432/demoDB", "demouser", "password");
+new DatabaseSync(db).sync(Employee.class, EmployeeDetails.class);
 ```
 
 # Dependencies
