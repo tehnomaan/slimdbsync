@@ -1,0 +1,87 @@
+/*
+ * gradle clean install
+ * gradle upload
+ * gradle closeAndReleaseRepository
+ */
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath 'com.bmuschko:gradle-nexus-plugin:2.3.1'
+	}
+}
+plugins {
+	id 'io.codearte.nexus-staging' version '0.20.0'
+}
+repositories {
+	mavenCentral()
+}
+apply plugin: 'java-library'
+apply plugin: 'eclipse'
+apply plugin: 'com.bmuschko.nexus'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+group = "eu.miltema"
+archivesBaseName = "slim-db-sync"
+version = "0.0.1-SNAPSHOT"
+
+eclipse {
+	classpath {
+		defaultOutputDir = file('build/default')
+		file.whenMerged {
+			entries.each { source ->
+				if (source.kind == 'src' && !source.path.startsWith('/')) { // only Source-folders in the project starting with '/' are project-references
+					source.output = null // use default Output for all source-folders; without this, eclipse nested path errors would occur
+				}
+			}
+		}
+	}
+}
+dependencies {
+	api 'javax.persistence:persistence-api:1.0.2'
+//	implementation 'eu.miltema:slimorm:1.0.0'
+	testImplementation 'junit:junit:4.12'
+	testImplementation 'org.postgresql:postgresql:42.2.5'
+}
+
+modifyPom {
+	project {
+	name 'SlimDbSync'
+		description 'A lightweight library for updating database schema to reflect current entities'
+		url 'https://github.com/tehnomaan/slimdbsync'
+		scm {
+			connection 'scm:git:git://github.com/tehnomaan/slimdbsync.git'
+			developerConnection 'scm:git:git://github.com/tehnomaan/slimdbsync.git'
+			url 'https://github.com/tehnomaan/slimdbsync'
+		}
+		licenses {
+			license {
+				name 'GNU General Public License, Version 3'
+				url 'https://www.gnu.org/licenses/gpl-3.0.html'
+				distribution 'repo'
+			}
+		}
+		developers {
+			developer {
+				id 'margus'
+				name 'Margus Selge'
+				email 'margus.selge@gmail.com'
+			}
+		}
+	}
+}
+extraArchive {
+	sources = true
+	tests = true
+	javadoc = true
+}
+nexus {
+	sign = true
+	repositoryUrl = 'https://oss.sonatype.org/service/local/staging/deploy/maven2/'
+	snapshotRepositoryUrl = 'https://oss.sonatype.org/content/repositories/snapshots/'
+}
+nexusStaging {
+}
