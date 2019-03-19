@@ -19,7 +19,7 @@ public class DatabaseSync {
 	private SyncContext ctx;
 	private Consumer<String> logger = message -> {};
 	private List<String> messageElements = new ArrayList<String>();//elements for debug messages
-	private boolean dropSequences = true, dropTables = true, dropColumns = true;
+	private boolean dropUnused = true;
 
 	public DatabaseSync(Database db) {
 		this.db = db;
@@ -121,12 +121,12 @@ public class DatabaseSync {
 		ctx.modelTables.values().stream().filter(table -> ctx.dbTables.containsKey(table.name)).forEach(table -> {
 			detectNewColumns(table, sb);
 			detectChangedColumns(table, sb);
-			if (dropColumns) detectRemovedColumns(table, sb);
+			if (dropUnused) detectRemovedColumns(table, sb);
 		});
 		detectNewPrimaryKeys(sb);
 		detectRemovedPrimaryKeys(sb);
-		if (dropTables) detectRemovedTables(sb);
-		if (dropSequences) detectRemovedSequences(sb);
+		if (dropUnused) detectRemovedTables(sb);
+		if (dropUnused) detectRemovedSequences(sb);
 	}
 
 	private void detectRemovedPrimaryKeys(StringBuilder sb) {
@@ -244,8 +244,8 @@ public class DatabaseSync {
 		return !(type == boolean.class || type == short.class || type == int.class || type == long.class || type == double.class || type == float.class);
 	}
 
-	public DatabaseSync dropUnusedElements(boolean b) {
-		dropColumns = dropSequences = dropTables = b;
+	public DatabaseSync dropUnused(boolean b) {
+		dropUnused = b;
 		return this;
 	}
 }

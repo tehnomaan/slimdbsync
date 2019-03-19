@@ -97,4 +97,20 @@ public class TestBasics extends AbstractDatabaseTest {
 		new DatabaseSyncEx(db, 2).sync(Entity2.class);//drop table & sequence; primary key will be cascade-dropped
 		db.getById(Entity1.class, e1.id);
 	}
+
+	@Test(expected = SQLException.class)
+	public void testDropUnused() throws Exception {
+		new DatabaseSync(db).sync(Entity1.class, Entity2.class);
+		db.insert(new Entity1("John"));
+		new DatabaseSync(db).sync(Entity2.class);
+		db.listAll(Entity1.class);
+	}
+
+	@Test
+	public void testDontDropUnused() throws Exception {
+		new DatabaseSync(db).sync(Entity1.class, Entity2.class);
+		db.insert(new Entity1("John"));
+		new DatabaseSync(db).dropUnused(false).sync(Entity2.class);
+		assertEquals(1, db.listAll(Entity1.class).size());
+	}
 }
