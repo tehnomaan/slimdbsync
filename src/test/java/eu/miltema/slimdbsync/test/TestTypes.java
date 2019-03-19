@@ -17,7 +17,7 @@ public class TestTypes extends AbstractDatabaseTest {
 	@BeforeClass
 	public static void setupClass() throws Exception {
 		initDatabase();
-		new DatabaseSync(db).sync(EntityWithTypes.class);
+		new SchemaGenerator(db).sync(EntityWithTypes.class);
 	}
 
 	@Before

@@ -2,10 +2,10 @@ package eu.miltema.slimdbsync.test;
 
 import static org.junit.Assert.assertEquals;
 
-import eu.miltema.slimdbsync.DatabaseSync;
+import eu.miltema.slimdbsync.SchemaGenerator;
 import eu.miltema.slimorm.Database;
 
-public class DatabaseSyncEx extends DatabaseSync {
+public class DatabaseSyncEx extends SchemaGenerator {
 	private int expectedStatementCount;
 
 	public DatabaseSyncEx(Database db, int expectedStatementCount) {

@@ -12,7 +12,7 @@ import java.sql.Statement;
 
 import javax.persistence.*;
 
-public class DatabaseSync {
+public class SchemaGenerator {
 
 	private Database db;
 	private DatabaseAdapter dbAdapter;
@@ -21,13 +21,13 @@ public class DatabaseSync {
 	private List<String> messageElements = new ArrayList<String>();//elements for debug messages
 	private boolean dropUnused = true;
 
-	public DatabaseSync(Database db) {
+	public SchemaGenerator(Database db) {
 		this.db = db;
 		this.dbAdapter = new PgAdapter(db.getSchema());
 		this.ctx = new SyncContext();
 	}
 
-	public DatabaseSync setLogger(Consumer<String> logger) {
+	public SchemaGenerator setLogger(Consumer<String> logger) {
 		this.logger = logger;
 		return this;
 	}
@@ -244,7 +244,7 @@ public class DatabaseSync {
 		return !(type == boolean.class || type == short.class || type == int.class || type == long.class || type == double.class || type == float.class);
 	}
 
-	public DatabaseSync dropUnused(boolean b) {
+	public SchemaGenerator dropUnused(boolean b) {
 		dropUnused = b;
 		return this;
 	}

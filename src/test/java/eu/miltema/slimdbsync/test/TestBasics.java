@@ -6,7 +6,7 @@ import java.sql.SQLException;
 
 import org.junit.*;
 
-import eu.miltema.slimdbsync.DatabaseSync;
+import eu.miltema.slimdbsync.SchemaGenerator;
 
 public class TestBasics extends AbstractDatabaseTest {
 
@@ -22,20 +22,20 @@ public class TestBasics extends AbstractDatabaseTest {
 
 	@Test
 	public void testNoChanges() throws Exception {
-		new DatabaseSync(db).sync(EntityWithTypes.class);
+		new SchemaGenerator(db).sync(EntityWithTypes.class);
 		new DatabaseSyncEx(db, 0).sync(EntityWithTypes.class);
 	}
 
 	@Test
 	public void testCreateTable() throws Exception {
-		new DatabaseSync(db).sync(Entity0.class);
+		new SchemaGenerator(db).sync(Entity0.class);
 		db.insert(new Entity0());
 		assertTrue(db.listAll(Entity0.class).size() == 1);
 	}
 
 	@Test
 	public void testCreateAutoIncrementSequence() throws Exception {
-		new DatabaseSync(db).sync(Entity1.class);
+		new SchemaGenerator(db).sync(Entity1.class);
 		Entity1 e = db.insert(new Entity1());
 		assertTrue(e.id > 0);
 		assertNotNull(db.getById(Entity1.class, e.id));
@@ -43,7 +43,7 @@ public class TestBasics extends AbstractDatabaseTest {
 
 	@Test
 	public void testTableCustomNames() throws Exception {
-		new DatabaseSync(db).sync(EntityCustomNames.class);
+		new SchemaGenerator(db).sync(EntityCustomNames.class);
 		EntityCustomNames e = new EntityCustomNames();
 		e.name = "John";
 		e.complexName = "Fitzgerald";
@@ -57,7 +57,7 @@ public class TestBasics extends AbstractDatabaseTest {
 
 	@Test
 	public void testAddColumn() throws Exception {
-		new DatabaseSync(db).sync(Entity1.class);
+		new SchemaGenerator(db).sync(Entity1.class);
 		db.insert(new Entity1());
 		new DatabaseSyncEx(db, 1).sync(Entity1WithCount.class);//add column count
 		Entity1 e = db.insert(new Entity1WithCount("Jack", 15));
@@ -67,7 +67,7 @@ public class TestBasics extends AbstractDatabaseTest {
 
 	@Test
 	public void testDropColumn() throws Exception {
-		new DatabaseSync(db).sync(Entity1WithCount.class);
+		new SchemaGenerator(db).sync(Entity1WithCount.class);
 		Entity1WithCount e = db.insert(new Entity1WithCount("John", 15));
 		new DatabaseSyncEx(db, 1).sync(Entity1.class);//drop column count
 		assertNull(db.getById(Entity1WithCount.class, e.id).count);
@@ -75,7 +75,7 @@ public class TestBasics extends AbstractDatabaseTest {
 
 	@Test
 	public void testDropIdColumn() throws Exception {
-		new DatabaseSync(db).sync(Entity1.class);
+		new SchemaGenerator(db).sync(Entity1.class);
 		db.insert(new Entity1("Jack"));
 		new DatabaseSyncEx(db, 2).sync(Entity1WithoutId.class);//drop (1) id-column and (2) associated sequence; primary key constraint will be implicitly cascade-dropped
 		assertNull(db.listAll(Entity1.class).get(0).id);// column "id" was dropped
@@ -83,7 +83,7 @@ public class TestBasics extends AbstractDatabaseTest {
 	
 	@Test
 	public void testAddAndDropColumnsSimultaneously() throws Exception {
-		new DatabaseSync(db).sync(Entity1.class);
+		new SchemaGenerator(db).sync(Entity1.class);
 		new DatabaseSyncEx(db, 2).sync(Entity1Columns.class);//drop name; add count2
 		Entity1Columns e = new Entity1Columns();
 		e.count2 = 123;
@@ -92,7 +92,7 @@ public class TestBasics extends AbstractDatabaseTest {
 
 	@Test(expected = SQLException.class)
 	public void testDropTable() throws Exception {
-		new DatabaseSync(db).sync(Entity1.class, Entity2.class);
+		new SchemaGenerator(db).sync(Entity1.class, Entity2.class);
 		Entity1 e1 = db.insert(new Entity1("John"));
 		new DatabaseSyncEx(db, 2).sync(Entity2.class);//drop table & sequence; primary key will be cascade-dropped
 		db.getById(Entity1.class, e1.id);
@@ -100,17 +100,17 @@ public class TestBasics extends AbstractDatabaseTest {
 
 	@Test(expected = SQLException.class)
 	public void testDropUnused() throws Exception {
-		new DatabaseSync(db).sync(Entity1.class, Entity2.class);
+		new SchemaGenerator(db).sync(Entity1.class, Entity2.class);
 		db.insert(new Entity1("John"));
-		new DatabaseSync(db).sync(Entity2.class);
+		new SchemaGenerator(db).sync(Entity2.class);
 		db.listAll(Entity1.class);
 	}
 
 	@Test
 	public void testDontDropUnused() throws Exception {
-		new DatabaseSync(db).sync(Entity1.class, Entity2.class);
+		new SchemaGenerator(db).sync(Entity1.class, Entity2.class);
 		db.insert(new Entity1("John"));
-		new DatabaseSync(db).dropUnused(false).sync(Entity2.class);
+		new SchemaGenerator(db).dropUnused(false).sync(Entity2.class);
 		assertEquals(1, db.listAll(Entity1.class).size());
 	}
 }
