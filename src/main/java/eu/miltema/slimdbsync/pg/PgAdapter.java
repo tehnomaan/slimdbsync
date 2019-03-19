@@ -24,12 +24,12 @@ public class PgAdapter implements DatabaseAdapter {
 	}
 
 	@Override
-	public Set<String> loadExistingSequenceNames(Database db) throws Exception {
+	public Set<String> loadCurrentSequenceNames(Database db) throws Exception {
 		return db.where("sequence_schema=?", db.getSchema()).stream(PgSequence.class).map(seq -> seq.sequenceName).collect(toSet());
 	}
 
 	@Override
-	public Collection<TableDef> loadExistingTables(Database db) throws Exception {
+	public Collection<TableDef> loadCurrentTables(Database db) throws Exception {
 		List<TableDef> tables = db.where("schemaname=?", schema).stream(PgTable.class).map(t -> {
 			TableDef table = new TableDef();
 			table.name = t.tablename;
@@ -55,7 +55,7 @@ public class PgAdapter implements DatabaseAdapter {
 	}
 
 	@Override
-	public Collection<PrimaryKeyDef> loadExistingPrimaryKeys(Database db) throws Exception {
+	public Collection<PrimaryKeyDef> loadCurrentPrimaryKeys(Database db) throws Exception {
 		final String sql = "SELECT tc.table_schema, tc.table_name, kc.column_name, tc.constraint_catalog db_name, tc.constraint_name" + 
 				" FROM information_schema.table_constraints tc, information_schema.key_column_usage kc" + 
 				" WHERE tc.constraint_type = ? AND tc.constraint_catalog=current_database() AND kc.table_name = tc.table_name and kc.table_schema = tc.table_schema AND kc.constraint_name = tc.constraint_name";
@@ -87,19 +87,6 @@ public class PgAdapter implements DatabaseAdapter {
 	@Override
 	public String dropColumn(String tableName, String colname) {
 		return "ALTER TABLE \"" + tableName + "\" DROP COLUMN \"" + colname + "\";" + ENDL;
-	}
-
-	@Override
-	public String alterTable(String tableName, List<String> addColumns, List<String> dropColumns) {
-		if (addColumns.isEmpty() && dropColumns.isEmpty())
-			return "";
-		return "ALTER TABLE " + "\"" + tableName + "\"" +
-				fromNewLine(addColumns.stream().map(def -> "ADD COLUMN \"" + def + "\"").collect(joining("," + ENDL))) +
-				fromNewLine(dropColumns.stream().collect(joining("," + ENDL))) + ";" + ENDL;
-	}
-
-	private String fromNewLine(String string) {
-		return (string.isEmpty() ? string : ENDL + "  " + string);
 	}
 
 	@Override
@@ -140,11 +127,6 @@ public class PgAdapter implements DatabaseAdapter {
 	@Override
 	public Object dropSequence(String sequenceName) {
 		return "DROP SEQUENCE IF EXISTS " + sequenceName + " CASCADE;" + ENDL;//sometimes, sequence is already cascade-dropped with related table 
-	}
-
-	@Override
-	public String getColumnDefaultFromSequence(String sequenceName) {
-		return "nextval('" + sequenceName + "'::regclass)";
 	}
 
 	@Override

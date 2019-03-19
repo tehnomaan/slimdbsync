@@ -94,9 +94,9 @@ public class SchemaGenerator {
 	}
 
 	private void loadCurrentSchema() throws Exception {
-		ctx.dbSequenceNames = dbAdapter.loadExistingSequenceNames(db);
-		ctx.dbTables = dbAdapter.loadExistingTables(db).stream().collect(toMap(def -> def.name, def -> def));
-		ctx.dbPrimaryKeys = dbAdapter.loadExistingPrimaryKeys(db).stream().collect(toMap(pk -> pk.table, pk -> pk));
+		ctx.dbSequenceNames = dbAdapter.loadCurrentSequenceNames(db);
+		ctx.dbTables = dbAdapter.loadCurrentTables(db).stream().collect(toMap(def -> def.name, def -> def));
+		ctx.dbPrimaryKeys = dbAdapter.loadCurrentPrimaryKeys(db).stream().collect(toMap(pk -> pk.table, pk -> pk));
 	}
 
 	private String getSourceSequence(EntityProperties e, FieldProperties f) {
