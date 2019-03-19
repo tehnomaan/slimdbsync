@@ -69,7 +69,7 @@ public class SchemaGenerator {
 					switch (f.field.getAnnotation(GeneratedValue.class).strategy()) {
 					case IDENTITY:
 						if (!dbAdapter.supportsIdentityStrategy())
-							throw new SchemaUpdateException(ref(clazz, f) + ": table strategy not supported");
+							throw new SchemaUpdateException(ref(clazz, f) + ": identity strategy not supported");
 						c.isIdentity = true;
 						break;
 					case TABLE:
@@ -87,6 +87,31 @@ public class SchemaGenerator {
 			if (eprops.idField != null)
 				ctx.modelPrimaryKeys.put(table.name, new PrimaryKeyDef(table.name, eprops.idField.columnName, null));
 		}
+
+		initModelForeignKeys(entityClasses);
+	}
+
+	private void initModelForeignKeys(Class<?>[] entityClasses) {
+		ctx.modelForeignKeys = new HashMap<>();
+		for(Class<?> clazz : entityClasses) {
+			EntityProperties eprops = db.getDialect().getProperties(clazz);
+			eprops.fields.stream().forEach(f -> {
+				if (f.field.isAnnotationPresent(ManyToOne.class)) {
+					Class<?> targetClass = f.field.getAnnotation(ManyToOne.class).targetEntity();
+					if (!f.fieldType.getPackage().getName().startsWith("java"))
+						throw new SchemaUpdateException(ref(clazz, f) + ": foreign key must be elementary type or String");
+					if (targetClass == null)
+						throw new SchemaUpdateException(ref(clazz, f) + ": missing targetEntity in @ManyToOne");
+					EntityProperties target = db.getDialect().getProperties(targetClass);
+					if (target == null)
+						throw new SchemaUpdateException(ref(clazz, f) + ": @ManyToOne target class " + targetClass.getName() + " not registered as entity with SchemaGenerator");
+					if (target.idField == null)
+						throw new SchemaUpdateException(ref(clazz, f) + ": @ManyToOne target class " + targetClass.getName() + " does not declare id-field");
+					ForeignKeyDef fdef = new ForeignKeyDef(eprops.tableName, f.columnName, target.tableName, target.idField.columnName, null);
+					ctx.modelForeignKeys.put(fdef.localTable + "/" + fdef.localColumn, fdef);
+				}
+			});
+		}
 	}
 
 	private String ref(Class<?> clazz, FieldProperties fprops) {
@@ -97,6 +122,7 @@ public class SchemaGenerator {
 		ctx.dbSequenceNames = dbAdapter.loadCurrentSequenceNames(db);
 		ctx.dbTables = dbAdapter.loadCurrentTables(db).stream().collect(toMap(def -> def.name, def -> def));
 		ctx.dbPrimaryKeys = dbAdapter.loadCurrentPrimaryKeys(db).stream().collect(toMap(pk -> pk.table, pk -> pk));
+		ctx.dbForeignKeys = dbAdapter.loadCurrentForeignKeys(db).stream().collect(toMap(fk -> fk.localTable + "/" + fk.localColumn, fk -> fk));
 	}
 
 	private String getSourceSequence(EntityProperties e, FieldProperties f) {
@@ -125,8 +151,24 @@ public class SchemaGenerator {
 		});
 		detectNewPrimaryKeys(sb);
 		detectRemovedPrimaryKeys(sb);
+		detectNewForeignKeys(sb);
+		detectRemovedForeignKeys(sb);
 		if (dropUnused) detectRemovedTables(sb);
 		if (dropUnused) detectRemovedSequences(sb);
+	}
+
+	private void detectNewForeignKeys(StringBuilder sb) {
+		ctx.modelForeignKeys.keySet().stream().
+			filter(mfname -> !ctx.dbForeignKeys.containsKey(mfname)).
+			map(mfname -> ctx.modelForeignKeys.get(mfname)).
+			forEach(mfk -> sb.append(dbAdapter.createForeignKey(mfk)));
+	}
+
+	private void detectRemovedForeignKeys(StringBuilder sb) {
+		ctx.dbForeignKeys.keySet().stream().
+			filter(dbfname -> !ctx.modelForeignKeys.containsKey(dbfname)).
+			map(dbfname -> ctx.dbForeignKeys.get(dbfname)).
+			forEach(dbf -> sb.append(dbAdapter.dropForeignKey(dbf.localTable, dbf.localColumn, dbf.constraintName)));
 	}
 
 	private void detectRemovedPrimaryKeys(StringBuilder sb) {

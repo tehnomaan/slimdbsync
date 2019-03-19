@@ -31,6 +31,14 @@ public interface DatabaseAdapter {
 	Collection<PrimaryKeyDef> loadCurrentPrimaryKeys(Database db) throws Exception;
 
 	/**
+	 * Load current foreign key constraints from database
+	 * @param db database link
+	 * @return foreign key definitions
+	 * @throws Exception when any error occurs
+	 */
+	Collection<ForeignKeyDef> loadCurrentForeignKeys(Database db) throws Exception;
+
+	/**
 	 * Provide CREATE TABLE statement (including column definitions)
 	 * @param tableDef table definition
 	 * @return DDL for table creation
@@ -91,13 +99,22 @@ public interface DatabaseAdapter {
 	String addPrimaryKey(String tableName, String columnName);
 
 	/**
-	 * Provide ALTER TABLE statement for dropping primary key 
+	 * Provide statement for dropping primary key 
 	 * @param tableName table name
 	 * @param columnName column name
 	 * @param constraintName constraint name
-	 * @return DDL for deleting primary key
+	 * @return DDL for deleting constraint
 	 */
 	String dropPrimaryKey(String tableName, String columnName, String constraintName);
+
+	/**
+	 * Provide statement for creating foreign key constraint 
+	 * @param foreignKeyDef foreign key definition
+	 * @return DDL for creating constraint
+	 */
+	String dropForeignKey(String localTable, String localColumn, String constraintName);
+
+	String createForeignKey(ForeignKeyDef foreignKeyDef);
 
 	/**
 	 * Map java type to sql type

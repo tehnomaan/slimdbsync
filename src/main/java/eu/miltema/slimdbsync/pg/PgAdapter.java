@@ -63,6 +63,16 @@ public class PgAdapter implements DatabaseAdapter {
 	}
 
 	@Override
+	public Collection<ForeignKeyDef> loadCurrentForeignKeys(Database db) throws Exception {
+		final String sql = "SELECT tc.table_schema, tc.constraint_name, tc.table_name, kcu.column_name, ccu.table_schema AS foreign_table_schema, ccu.table_name AS foreign_table, ccu.column_name AS foreign_column " + 
+				"FROM information_schema.table_constraints AS tc " + 
+				"  JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema " + 
+				"  JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema " + 
+				"WHERE tc.constraint_type = ?";
+		return db.sql(sql, "FOREIGN KEY").stream(PgForeignKey.class).map(r -> new ForeignKeyDef(r.tableName, r.columnName, r.foreignTable, r.foreignColumn, r.constraintName)).collect(toList());
+	}
+
+	@Override
 	public String createTableWithColumns(TableDef tableDef) {
 		String columns = tableDef.columns.values().stream().map(coldef -> getColumnDefinition(coldef, false)).collect(joining("," + ENDL + "  "));
 		return "CREATE TABLE \"" + tableDef.name + "\"(" + ENDL + "  " + columns + ENDL + ");" + ENDL;
@@ -147,5 +157,16 @@ public class PgAdapter implements DatabaseAdapter {
 	@Override
 	public String addPrimaryKey(String tableName, String columnName) {
 		return "ALTER TABLE \"" + tableName + "\" ADD PRIMARY KEY (\"" + columnName + "\");" + ENDL;
+	}
+
+	@Override
+	public String dropForeignKey(String localTable, String localColumn, String constraintName) {
+		return "ALTER TABLE \"" + localTable + "\" DROP CONSTRAINT (\"" + constraintName + "\");" + ENDL;
+	}
+
+	@Override
+	public String createForeignKey(ForeignKeyDef foreignKeyDef) {
+		return "ALTER TABLE \"" + foreignKeyDef.localTable + "\" ADD FOREIGN KEY (\"" + foreignKeyDef.localColumn +
+				"\") REFERENCES \"" + foreignKeyDef.foreignTable + "\"(\""+ foreignKeyDef.foreignColumn + "\");" + ENDL;
 	}
 }
