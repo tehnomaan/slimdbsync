@@ -116,15 +116,15 @@ public class DatabaseSync {
 	}
 
 	private void detectChanges(StringBuilder sb) {
-		detectRemovedPrimaryKeys(sb);
 		detectNewSequences(sb);
 		detectNewTables(sb);
 		ctx.modelTables.values().stream().filter(table -> ctx.dbTables.containsKey(table.name)).forEach(table -> {
 			detectNewColumns(table, sb);
-			detectNewPrimaryKey(table, sb);
 			detectChangedColumns(table, sb);
 			if (dropColumns) detectRemovedColumns(table, sb);
 		});
+		detectNewPrimaryKeys(sb);
+		detectRemovedPrimaryKeys(sb);
 		if (dropTables) detectRemovedTables(sb);
 		if (dropSequences) detectRemovedSequences(sb);
 	}
@@ -134,8 +134,10 @@ public class DatabaseSync {
 			TableDef table = ctx.modelTables.get(pk.table);
 			if (table == null)
 				continue;//a table was dropped: pk will be implicitly cascade-dropped
-			if (Objects.equals(getPrimaryKeyColumn(table), pk.column))
-				continue;//@Id field remained the same: no need to drop pk
+			if (!table.columns.containsKey(pk.column))
+				continue;//pk column was removed; pk will be implicitly cascade-dropped
+			if (table.columns.get(pk.column).isPrimaryKey)
+				continue;//column is still primary key; don' drop the constraint
 			sb.append(dbAdapter.dropPrimaryKey(pk.table, pk.column, pk.constraintName));
 		}
 	}
@@ -169,15 +171,6 @@ public class DatabaseSync {
 		logElementsMessage("Added " + newTable.name + " columns ");
 	}
 
-	private void detectNewPrimaryKey(TableDef table, StringBuilder sb) {
-		String pkColumn = getPrimaryKeyColumn(table);
-		if (pkColumn != null) {
-			PrimaryKeyDef existingKey = ctx.dbPrimaryKeys.get(table.name);
-			if (existingKey == null || !Objects.equals(existingKey.column, pkColumn))
-				sb.append(dbAdapter.addPrimaryKey(table.name, pkColumn));
-		}
-	}
-
 	private void detectChangedColumns(TableDef newTable, StringBuilder sb) {
 		Map<String, ColumnDef> existingCols = ctx.dbTables.get(newTable.name).columns;
 		newTable.columns.values().stream().
@@ -197,6 +190,17 @@ public class DatabaseSync {
 			peek(col -> messageElements.add(col)).
 			forEach(col -> sb.append(dbAdapter.dropColumn(newTable.name, col)));
 		logElementsMessage("Removed " + newTable.name + " columns ");
+	}
+
+	private void detectNewPrimaryKeys(StringBuilder sb) {
+		ctx.modelTables.values().stream().forEach(table -> {
+			String pkColumn = getPrimaryKeyColumn(table);
+			if (pkColumn != null) {
+				PrimaryKeyDef existingKey = ctx.dbPrimaryKeys.get(table.name);
+				if (existingKey == null || !Objects.equals(existingKey.column, pkColumn))
+					sb.append(dbAdapter.addPrimaryKey(table.name, pkColumn));
+			}
+		});
 	}
 
 	private void detectRemovedTables(StringBuilder sb) {
@@ -238,21 +242,6 @@ public class DatabaseSync {
 			return field.getAnnotation(Column.class).nullable();
 		Class<?> type = field.getType();
 		return !(type == boolean.class || type == short.class || type == int.class || type == long.class || type == double.class || type == float.class);
-	}
-
-	public DatabaseSync dropUnusedSequences(boolean b) {
-		this.dropSequences = b;
-		return this;
-	}
-	
-	public DatabaseSync dropUnusedTables(boolean b) {
-		this.dropTables = b;
-		return this;
-	}
-	
-	public DatabaseSync dropUnusedColumns(boolean b) {
-		this.dropColumns = b;
-		return this;
 	}
 
 	public DatabaseSync dropUnusedElements(boolean b) {

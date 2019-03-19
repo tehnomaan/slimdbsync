@@ -1,7 +1,7 @@
 package eu.miltema.slimdbsync.test;
 
 import java.io.*;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.stream.Collectors;
 
 import eu.miltema.slimorm.Database;
@@ -27,6 +27,15 @@ abstract class AbstractDatabaseTest {
 				stmt.execute(sql);
 				return 5;
 			}
+		});
+	}
+
+	protected void execSql(String sql) throws Exception {
+		db.transaction((db, conn) -> {
+			try(PreparedStatement stmt = conn.prepareStatement(sql)) {
+				stmt.executeUpdate();
+			}
+			return null;
 		});
 	}
 }

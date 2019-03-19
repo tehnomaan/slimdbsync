@@ -2,7 +2,7 @@ package eu.miltema.slimdbsync.test;
 
 import javax.persistence.*;
 
-public class SyncEntity3 {
+public class Entity3 {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

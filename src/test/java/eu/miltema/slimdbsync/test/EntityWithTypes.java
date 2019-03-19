@@ -5,12 +5,9 @@ import java.sql.Timestamp;
 import java.time.*;
 import java.util.function.Consumer;
 
-import javax.persistence.Table;
-
 import eu.miltema.slimorm.JSon;
 
-@Table(name= "sync_types_entity")
-public class SyncTypesEntity {
+public class EntityWithTypes {
 
 	public String fString;
 	public byte fByte1;
@@ -34,12 +31,12 @@ public class SyncTypesEntity {
 	public LocalDateTime fLocalDateTime;
 	@JSon public String[] fJson;
 
-	public SyncTypesEntity() {
+	public EntityWithTypes() {
 	}
 
 	@SafeVarargs
-	public SyncTypesEntity(Consumer<SyncTypesEntity> ... initializers) {
-		for(Consumer<SyncTypesEntity> initializer : initializers)
+	public EntityWithTypes(Consumer<EntityWithTypes> ... initializers) {
+		for(Consumer<EntityWithTypes> initializer : initializers)
 			initializer.accept(this);
 	}
 }
