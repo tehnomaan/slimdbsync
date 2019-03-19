@@ -7,7 +7,6 @@ import java.util.*;
 import java.util.function.Consumer;
 
 import static java.util.stream.Collectors.*;
-import java.lang.reflect.Field;
 import java.sql.Statement;
 
 import javax.persistence.*;
@@ -50,42 +49,22 @@ public class SchemaGenerator {
 		ctx.modelTables = new HashMap<>();
 		ctx.modelPrimaryKeys = new HashMap<>();
 		for(Class<?> clazz : entityClasses) {
-			EntityProperties eprops = db.getDialect().getProperties(clazz);
+			EntityProperties eprop = db.getDialect().getProperties(clazz);
 			TableDef table = new TableDef();
-			table.name = eprops.tableName;
-			table.columns = eprops.fields.stream().map(f -> {
-				ColumnDef c = new ColumnDef();
-				c.name = f.columnName;
-				c.isNullable = (f == eprops.idField ? false : isNullable(f.field));
-				c.isJson = f.field.isAnnotationPresent(JSon.class);
-				c.isPrimaryKey = (f == eprops.idField);
-				c.isIdentity = (f.field.isAnnotationPresent(GeneratedValue.class) ? f.field.getAnnotation(GeneratedValue.class).strategy() == GenerationType.IDENTITY : false);
-				c.type = (c.isJson ? dbAdapter.sqlTypeForJSon() : dbAdapter.sqlType(f.fieldType));
-				c.sourceSequence = getSourceSequence(eprops, f);
-				c.columnDefinitionOverride = (f.field.isAnnotationPresent(Column.class) ? f.field.getAnnotation(Column.class).columnDefinition() : null);
-				if ("".equals(c.columnDefinitionOverride))
-					c.columnDefinitionOverride = null;
-				if (f.field.isAnnotationPresent(GeneratedValue.class))
-					switch (f.field.getAnnotation(GeneratedValue.class).strategy()) {
-					case IDENTITY:
-						if (!dbAdapter.supportsIdentityStrategy())
-							throw new SchemaUpdateException(ref(clazz, f) + ": identity strategy not supported");
-						c.isIdentity = true;
-						break;
-					case TABLE:
-						throw new SchemaUpdateException(ref(clazz, f) + ": table strategy not supported");
-					default:
-						break;
-					}
-
+			table.name = eprop.tableName;
+			table.columns = eprop.fields.stream().map(fprop -> {
+				ColumnDef c = new ColumnDef(eprop, fprop, dbAdapter);
+				if (c.isIdentity && !dbAdapter.supportsIdentityStrategy())
+					throw new SchemaUpdateException(ref(clazz, fprop) + ": identity strategy not supported");
+				if (c.isIdTableStrategy)
+					throw new SchemaUpdateException(ref(clazz, fprop) + ": table strategy not supported");
 				if (c.sourceSequence != null)
 					ctx.modelSequenceNames.add(c.sourceSequence);
-
 				return c;
 			}).collect(toMap(c -> c.name, c -> c));
 			ctx.modelTables.put(table.name, table);
-			if (eprops.idField != null)
-				ctx.modelPrimaryKeys.put(table.name, new PrimaryKeyDef(table.name, eprops.idField.columnName, null));
+			if (eprop.idField != null)
+				ctx.modelPrimaryKeys.put(table.name, new PrimaryKeyDef(table.name, eprop.idField.columnName, null));
 		}
 
 		initModelForeignKeys(entityClasses);
@@ -123,22 +102,6 @@ public class SchemaGenerator {
 		ctx.dbTables = dbAdapter.loadCurrentTables(db).stream().collect(toMap(def -> def.name, def -> def));
 		ctx.dbPrimaryKeys = dbAdapter.loadCurrentPrimaryKeys(db).stream().collect(toMap(pk -> pk.table, pk -> pk));
 		ctx.dbForeignKeys = dbAdapter.loadCurrentForeignKeys(db).stream().collect(toMap(fk -> fk.localTable + "/" + fk.localColumn, fk -> fk));
-	}
-
-	private String getSourceSequence(EntityProperties e, FieldProperties f) {
-		if (f.field.isAnnotationPresent(GeneratedValue.class)) {
-			GeneratedValue gv = f.field.getAnnotation(GeneratedValue.class);
-			if (gv.strategy() == GenerationType.AUTO || gv.strategy() == GenerationType.SEQUENCE) {
-				String seqName = gv.generator();
-				if (seqName == null || seqName.trim().isEmpty())
-					return dbAdapter.getDefaultSequenceName(e.tableName, f.columnName);
-				else return seqName.trim();
-			}
-		}
-		else if (e.idField == f && !f.field.isAnnotationPresent(Id.class))// this is an id-field without @Id and @GeneratedValue
-			return dbAdapter.getDefaultSequenceName(e.tableName, f.columnName);
-		return null;
-		
 	}
 
 	private void detectChanges(StringBuilder sb) {
@@ -275,15 +238,6 @@ public class SchemaGenerator {
 			}
 			return null;
 		});
-	}
-
-	private boolean isNullable(Field field) {
-		if (field.isAnnotationPresent(Id.class))
-			return false;
-		if (field.isAnnotationPresent(Column.class))
-			return field.getAnnotation(Column.class).nullable();
-		Class<?> type = field.getType();
-		return !(type == boolean.class || type == short.class || type == int.class || type == long.class || type == double.class || type == float.class);
 	}
 
 	public SchemaGenerator dropUnused(boolean b) {
