@@ -73,9 +73,12 @@ public interface DatabaseAdapter {
 
 	String sqlTypeForJSon();
 
-	Object dropTable(String tablename);
+	String dropTable(String tablename);
 
-	Object alterColumn(String name, ColumnDef col);
+	String alterColumn(String name, ColumnDef col);
 
 	boolean supportsIdentityStrategy();
+
+	String dropPrimaryKey(String tableName, String columnName, String constraintName);
+	String addPrimaryKey(String tableName, String columnName);
 }

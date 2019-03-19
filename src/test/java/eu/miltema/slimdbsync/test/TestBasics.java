@@ -72,20 +72,20 @@ public class TestBasics extends AbstractDatabaseTest {
 	@Test
 	public void testDropIdColumn() throws Exception {
 		new DatabaseSync(db).sync(SyncEntity10.class);
-		new DatabaseSyncEx(db, 2).sync(SyncEntity11.class);//drop id-column and associated sequence
+		new DatabaseSyncEx(db, 2).sync(SyncEntity11.class);//drop id-column and associated sequence; primary key constraint will be silently cascade-dropped
 	}
 	
 	@Test
 	public void testAddAndDropColumnsSimultaneously() throws Exception {
 		new DatabaseSync(db).sync(SyncEntity1.class);
-		new DatabaseSyncEx(db, 3).sync(SyncEntity11.class);//drop id-column and associated sequence; add count-column
+		new DatabaseSyncEx(db, 3).sync(SyncEntity11.class);//drop (1) id-column and (2) associated sequence (primary key will be silently cascade-dropped); add (3) count-column
 	}
 
 	@Test(expected = SQLException.class)
 	public void testDropTable() throws Exception {
 		new DatabaseSync(db).sync(SyncEntity1.class, SyncEntity2.class);
 		SyncEntity1 e1 = db.insert(new SyncEntity1("John"));
-		new DatabaseSync(db).sync(SyncEntity2.class);
+		new DatabaseSyncEx(db, 2).sync(SyncEntity2.class);//drop table & sequence; primary key will be cascade-dropped
 		db.getById(SyncEntity1.class, e1.id);
 	}
 }

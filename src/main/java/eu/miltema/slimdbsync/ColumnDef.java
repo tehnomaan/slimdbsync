@@ -5,6 +5,7 @@ public class ColumnDef {
 	public String type;
 	public boolean isNullable;
 	public boolean isJson;
+	public boolean isPrimaryKey;//only initialized for model columns; not initialized for database columns
 	public boolean isIdentity;
 
 	/**

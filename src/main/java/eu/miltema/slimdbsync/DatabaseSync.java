@@ -48,6 +48,7 @@ public class DatabaseSync {
 	private void initModelTables(Class<?>[] entityClasses) throws SchemaUpdateException {
 		ctx.modelSequenceNames = new HashSet<>();
 		ctx.modelTables = new HashMap<>();
+		ctx.modelPrimaryKeys = new HashMap<>();
 		for(Class<?> clazz : entityClasses) {
 			EntityProperties eprops = db.getDialect().getProperties(clazz);
 			TableDef table = new TableDef();
@@ -57,6 +58,7 @@ public class DatabaseSync {
 				c.name = f.columnName;
 				c.isNullable = (f == eprops.idField ? false : isNullable(f.field));
 				c.isJson = f.field.isAnnotationPresent(JSon.class);
+				c.isPrimaryKey = (f == eprops.idField);
 				c.isIdentity = (f.field.isAnnotationPresent(GeneratedValue.class) ? f.field.getAnnotation(GeneratedValue.class).strategy() == GenerationType.IDENTITY : false);
 				c.type = (c.isJson ? dbAdapter.sqlTypeForJSon() : dbAdapter.sqlType(f.fieldType));
 				c.sourceSequence = getSourceSequence(eprops, f);
@@ -82,6 +84,8 @@ public class DatabaseSync {
 				return c;
 			}).collect(toMap(c -> c.name, c -> c));
 			ctx.modelTables.put(table.name, table);
+			if (eprops.idField != null)
+				ctx.modelPrimaryKeys.put(table.name, new PrimaryKeyDef(table.name, eprops.idField.columnName, null));
 		}
 	}
 
@@ -92,7 +96,7 @@ public class DatabaseSync {
 	private void loadCurrentSchema() throws Exception {
 		ctx.dbSequenceNames = dbAdapter.loadExistingSequenceNames(db);
 		ctx.dbTables = dbAdapter.loadExistingTables(db).stream().collect(toMap(def -> def.name, def -> def));
-		ctx.dbPrimaryKeys = dbAdapter.loadExistingPrimaryKeys(db);
+		ctx.dbPrimaryKeys = dbAdapter.loadExistingPrimaryKeys(db).stream().collect(toMap(pk -> pk.table, pk -> pk));
 	}
 
 	private String getSourceSequence(EntityProperties e, FieldProperties f) {
@@ -112,15 +116,32 @@ public class DatabaseSync {
 	}
 
 	private void detectChanges(StringBuilder sb) {
+		detectRemovedPrimaryKeys(sb);
 		detectNewSequences(sb);
 		detectNewTables(sb);
 		ctx.modelTables.values().stream().filter(table -> ctx.dbTables.containsKey(table.name)).forEach(table -> {
 			detectNewColumns(table, sb);
+			detectNewPrimaryKey(table, sb);
 			detectChangedColumns(table, sb);
 			if (dropColumns) detectRemovedColumns(table, sb);
 		});
 		if (dropTables) detectRemovedTables(sb);
 		if (dropSequences) detectRemovedSequences(sb);
+	}
+
+	private void detectRemovedPrimaryKeys(StringBuilder sb) {
+		for(PrimaryKeyDef pk : ctx.dbPrimaryKeys.values()) {
+			TableDef table = ctx.modelTables.get(pk.table);
+			if (table == null)
+				continue;//a table was dropped: pk will be implicitly cascade-dropped
+			if (Objects.equals(getPrimaryKeyColumn(table), pk.column))
+				continue;//@Id field remained the same: no need to drop pk
+			sb.append(dbAdapter.dropPrimaryKey(pk.table, pk.column, pk.constraintName));
+		}
+	}
+
+	private String getPrimaryKeyColumn(TableDef table) {
+		return table.columns.values().stream().filter(c -> c.isPrimaryKey).map(c -> c.name).findAny().orElse(null);
 	}
 
 	private void detectNewSequences(StringBuilder sb) {
@@ -146,6 +167,15 @@ public class DatabaseSync {
 			peek(col -> messageElements.add(col.name)).
 			forEach(col -> sb.append(dbAdapter.addColumn(newTable.name, col)));
 		logElementsMessage("Added " + newTable.name + " columns ");
+	}
+
+	private void detectNewPrimaryKey(TableDef table, StringBuilder sb) {
+		String pkColumn = getPrimaryKeyColumn(table);
+		if (pkColumn != null) {
+			PrimaryKeyDef existingKey = ctx.dbPrimaryKeys.get(table.name);
+			if (existingKey == null || !Objects.equals(existingKey.column, pkColumn))
+				sb.append(dbAdapter.addPrimaryKey(table.name, pkColumn));
+		}
 	}
 
 	private void detectChangedColumns(TableDef newTable, StringBuilder sb) {

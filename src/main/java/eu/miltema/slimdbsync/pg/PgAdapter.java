@@ -59,13 +59,7 @@ public class PgAdapter implements DatabaseAdapter {
 		final String sql = "SELECT tc.table_schema, tc.table_name, kc.column_name, tc.constraint_catalog db_name, tc.constraint_name" + 
 				" FROM information_schema.table_constraints tc, information_schema.key_column_usage kc" + 
 				" WHERE tc.constraint_type = ? AND tc.constraint_catalog=current_database() AND kc.table_name = tc.table_name and kc.table_schema = tc.table_schema AND kc.constraint_name = tc.constraint_name";
-		return db.sql(sql, "PRIMARY KEY").stream(PgPrimaryKey.class).map(r -> {
-			PrimaryKeyDef pk = new PrimaryKeyDef();
-			pk.table = r.tableName;
-			pk.column = r.columnName;
-			pk.constraintName = r.constraintName;
-			return pk;
-		}).collect(toList());
+		return db.sql(sql, "PRIMARY KEY").stream(PgPrimaryKey.class).map(r -> new PrimaryKeyDef(r.tableName, r.columnName, r.constraintName)).collect(toList());
 	}
 
 	@Override
@@ -86,7 +80,7 @@ public class PgAdapter implements DatabaseAdapter {
 	}
 
 	@Override
-	public Object alterColumn(String tableName, ColumnDef column) {
+	public String alterColumn(String tableName, ColumnDef column) {
 		return "ALTER TABLE \"" + tableName + "\" ALTER COLUMN " + getColumnDefinition(column, true) + ";" + ENDL;
 	}
 
@@ -154,12 +148,22 @@ public class PgAdapter implements DatabaseAdapter {
 	}
 
 	@Override
-	public Object dropTable(String tablename) {
+	public String dropTable(String tablename) {
 		return "DROP TABLE \"" + tablename + "\";" + ENDL;
 	}
 
 	@Override
 	public boolean supportsIdentityStrategy() {
 		return false;
+	}
+
+	@Override
+	public String dropPrimaryKey(String tableName, String columnName, String constraintName) {
+		return "ALTER TABLE \"" + tableName + "\" DROP CONSTRAINT " + constraintName + ";" +ENDL;
+	}
+
+	@Override
+	public String addPrimaryKey(String tableName, String columnName) {
+		return "ALTER TABLE \"" + tableName + "\" ADD PRIMARY KEY (\"" + columnName + "\");" + ENDL;
 	}
 }

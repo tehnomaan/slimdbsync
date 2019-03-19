@@ -11,7 +11,8 @@ public class SyncContext {
 	public Map<String, TableDef> dbTables;//name->TableDef
 	public Set<String> modelSequenceNames;
 	public Set<String> dbSequenceNames;
-	public Collection<PrimaryKeyDef> dbPrimaryKeys;
+	public Map<String, PrimaryKeyDef> modelPrimaryKeys;//tbl/col->PrimaryKeyDef
+	public Map<String, PrimaryKeyDef> dbPrimaryKeys;//tbl/col->PrimaryKeyDef
 
 	public String getSchema() {
 		return db.getSchema();
