@@ -54,10 +54,6 @@ public class SchemaGenerator {
 			table.name = eprop.tableName;
 			table.columns = eprop.fields.stream().map(fprop -> {
 				ColumnDef c = new ColumnDef(eprop, fprop, dbAdapter);
-				if (c.isIdentity && !dbAdapter.supportsIdentityStrategy())
-					throw new SchemaUpdateException(ref(clazz, fprop) + ": identity strategy not supported");
-				if (c.isIdTableStrategy)
-					throw new SchemaUpdateException(ref(clazz, fprop) + ": table strategy not supported");
 				if (c.sourceSequence != null)
 					ctx.modelSequenceNames.add(c.sourceSequence);
 				return c;
@@ -78,23 +74,19 @@ public class SchemaGenerator {
 				if (f.field.isAnnotationPresent(ManyToOne.class)) {
 					Class<?> targetClass = f.field.getAnnotation(ManyToOne.class).targetEntity();
 					if (!f.fieldType.getPackage().getName().startsWith("java"))
-						throw new SchemaUpdateException(ref(clazz, f) + ": foreign key must be elementary type or String");
+						throw new SchemaUpdateException(f.field, ": foreign key must be elementary type or String");
 					if (targetClass == null)
-						throw new SchemaUpdateException(ref(clazz, f) + ": missing targetEntity in @ManyToOne");
+						throw new SchemaUpdateException(f.field, ": missing targetEntity in @ManyToOne");
 					EntityProperties target = db.getDialect().getProperties(targetClass);
 					if (target == null)
-						throw new SchemaUpdateException(ref(clazz, f) + ": @ManyToOne target class " + targetClass.getName() + " not registered as entity with SchemaGenerator");
+						throw new SchemaUpdateException(f.field, ": @ManyToOne target class " + targetClass.getName() + " not registered as entity with SchemaGenerator");
 					if (target.idField == null)
-						throw new SchemaUpdateException(ref(clazz, f) + ": @ManyToOne target class " + targetClass.getName() + " does not declare id-field");
+						throw new SchemaUpdateException(f.field, ": @ManyToOne target class " + targetClass.getName() + " does not declare id-field");
 					ForeignKeyDef fdef = new ForeignKeyDef(eprops.tableName, f.columnName, target.tableName, target.idField.columnName, null);
 					ctx.modelForeignKeys.put(fdef.localTable + "/" + fdef.localColumn, fdef);
 				}
 			});
 		}
-	}
-
-	private String ref(Class<?> clazz, FieldProperties fprops) {
-		return clazz.getSimpleName() + "/" + fprops.field.getName();
 	}
 
 	private void loadCurrentSchema() throws Exception {

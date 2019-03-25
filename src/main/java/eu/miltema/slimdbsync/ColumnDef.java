@@ -1,6 +1,7 @@
 package eu.miltema.slimdbsync;
 
 import java.lang.reflect.Field;
+
 import javax.persistence.*;
 import eu.miltema.slimorm.*;
 
@@ -37,6 +38,11 @@ public class ColumnDef {
 		if ("".equals(columnDefinitionOverride))
 			columnDefinitionOverride = null;
 		handleGeneratedValue(fprop.field.getAnnotation(GeneratedValue.class));
+
+		if (isIdentity && !dbAdapter.supportsIdentityStrategy())
+			throw new SchemaUpdateException(fprop.field, "identity strategy not supported");
+		if (isIdTableStrategy)
+			throw new SchemaUpdateException(fprop.field, "table strategy not supported");
 	}
 
 	private void handleGeneratedValue(GeneratedValue gv) {
@@ -74,7 +80,7 @@ public class ColumnDef {
 				else return seqName.trim();
 			}
 		}
-		else if (e.idField == f && !f.field.isAnnotationPresent(Id.class))// this is an id-field without @Id and @GeneratedValue
+		else if (isPrimaryKey && !f.field.isAnnotationPresent(Id.class))// this is an id-field without @Id and @GeneratedValue
 			return dbAdapter.getDefaultSequenceName(e.tableName, f.columnName);
 		return null;
 	}
