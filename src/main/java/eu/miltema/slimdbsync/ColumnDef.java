@@ -13,6 +13,7 @@ public class ColumnDef {
 	public boolean isPrimaryKey;//only initialized for model columns; not initialized for database columns
 	public boolean isIdentity;
 	public boolean isIdTableStrategy;
+	public boolean isForeignKey;
 
 	/**
 	 * Value for this column is fetched from this sequence
@@ -32,20 +33,24 @@ public class ColumnDef {
 		isNullable = (fprop == eprop.idField ? false : isNullable(fprop.field));
 		isJson = fprop.field.isAnnotationPresent(JSon.class);
 		isPrimaryKey = (fprop == eprop.idField);
-		type = (isJson ? dbAdapter.sqlTypeForJSon() : dbAdapter.sqlType(fprop.fieldType));
+		if (fprop.field.isAnnotationPresent(ManyToOne.class))
+			isForeignKey = true;//cannot set type here, since target entity may have not been initialized yet
+		else type = (isJson ? dbAdapter.sqlTypeForJSon() : dbAdapter.sqlType(fprop.fieldType));
 		sourceSequence = getSourceSequence(eprop, fprop, dbAdapter);
 		columnDefinitionOverride = (fprop.field.isAnnotationPresent(Column.class) ? fprop.field.getAnnotation(Column.class).columnDefinition() : null);
 		if ("".equals(columnDefinitionOverride))
 			columnDefinitionOverride = null;
-		handleGeneratedValue(fprop.field.getAnnotation(GeneratedValue.class));
+		initId(fprop.field.getAnnotation(GeneratedValue.class));
 
+		if (isIdentity && isForeignKey)
+			throw new SchemaUpdateException(fprop.field, "@Id and @ManyToOne are mutually exclusive");
 		if (isIdentity && !dbAdapter.supportsIdentityStrategy())
 			throw new SchemaUpdateException(fprop.field, "identity strategy not supported");
 		if (isIdTableStrategy)
 			throw new SchemaUpdateException(fprop.field, "table strategy not supported");
 	}
 
-	private void handleGeneratedValue(GeneratedValue gv) {
+	private void initId(GeneratedValue gv) {
 		if (gv != null)
 			switch (gv.strategy()) {
 			case IDENTITY:

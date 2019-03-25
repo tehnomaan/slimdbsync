@@ -100,7 +100,7 @@ public class PgAdapter implements DatabaseAdapter {
 	}
 
 	@Override
-	public String sqlType(Class<?> javaType) {
+	public String sqlType(Class<?> javaType) throws SchemaUpdateException {
 		if (javaType == boolean.class || javaType == Boolean.class) return "boolean";
 		else if (javaType == short.class || javaType == Short.class) return "smallint";
 		else if (javaType == int.class || javaType == Integer.class) return "integer";
@@ -116,7 +116,7 @@ public class PgAdapter implements DatabaseAdapter {
 		else if (javaType == ZonedDateTime.class) return "timestamp with time zone";
 		else if (javaType == LocalDate.class) return "date";
 		else if (javaType == LocalDateTime.class) return "timestamp without time zone";
-		else throw new RuntimeException("Unsupported type " + javaType.getSimpleName());
+		else throw new SchemaUpdateException("Unsupported type " + javaType.getSimpleName());
 	}
 
 	@Override
@@ -141,7 +141,7 @@ public class PgAdapter implements DatabaseAdapter {
 
 	@Override
 	public String dropTable(String tablename) {
-		return "DROP TABLE \"" + tablename + "\";" + ENDL;
+		return "DROP TABLE \"" + tablename + "\" CASCADE;" + ENDL;
 	}
 
 	@Override

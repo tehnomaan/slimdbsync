@@ -9,8 +9,6 @@ import java.util.function.Consumer;
 import static java.util.stream.Collectors.*;
 import java.sql.Statement;
 
-import javax.persistence.*;
-
 public class SchemaGenerator {
 
 	private Database db;
@@ -62,7 +60,6 @@ public class SchemaGenerator {
 			if (eprop.idField != null)
 				ctx.modelPrimaryKeys.put(table.name, new PrimaryKeyDef(table.name, eprop.idField.columnName, null));
 		}
-
 		initModelForeignKeys(entityClasses);
 	}
 
@@ -71,17 +68,16 @@ public class SchemaGenerator {
 		for(Class<?> clazz : entityClasses) {
 			EntityProperties eprops = db.getDialect().getProperties(clazz);
 			eprops.fields.stream().forEach(f -> {
-				if (f.field.isAnnotationPresent(ManyToOne.class)) {
-					Class<?> targetClass = f.field.getAnnotation(ManyToOne.class).targetEntity();
-					if (!f.fieldType.getPackage().getName().startsWith("java"))
-						throw new SchemaUpdateException(f.field, ": foreign key must be elementary type or String");
-					if (targetClass == null)
-						throw new SchemaUpdateException(f.field, ": missing targetEntity in @ManyToOne");
+				ColumnDef coldef = ctx.modelTables.get(eprops.tableName).columns.get(f.columnName);
+				if (coldef.isForeignKey) {
+					Class<?> targetClass = f.fieldType;
 					EntityProperties target = db.getDialect().getProperties(targetClass);
-					if (target == null)
-						throw new SchemaUpdateException(f.field, ": @ManyToOne target class " + targetClass.getName() + " not registered as entity with SchemaGenerator");
+					EntityProperties targetProps = db.getDialect().getProperties(targetClass);
+					if (targetProps == null)
+						throw new SchemaUpdateException(f.field, ": @ManyToOne target class " + targetClass.getName() + " not registered with SchemaGenerator");
 					if (target.idField == null)
 						throw new SchemaUpdateException(f.field, ": @ManyToOne target class " + targetClass.getName() + " does not declare id-field");
+					coldef.type = ctx.modelTables.get(targetProps.tableName).columns.values().stream().filter(fcoldef -> fcoldef.isPrimaryKey).map(fcoldef -> fcoldef.type).findAny().orElse(null);
 					ForeignKeyDef fdef = new ForeignKeyDef(eprops.tableName, f.columnName, target.tableName, target.idField.columnName, null);
 					ctx.modelForeignKeys.put(fdef.localTable + "/" + fdef.localColumn, fdef);
 				}
