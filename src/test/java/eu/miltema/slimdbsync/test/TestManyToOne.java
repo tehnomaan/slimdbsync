@@ -41,7 +41,7 @@ public class TestManyToOne extends AbstractDatabaseTest {
 	@Test(expected = SQLException.class)
 	public void testAddAnotherFKey() throws Exception {
 		new SchemaGenerator(db).sync(Entity1.class, EntityFKeyNoConstraint.class);
-		new SchemaGenerator(db).sync(Entity1.class, EntityFKey.class);
+		new SchemaGenEx(db, 1).sync(Entity1.class, EntityFKey.class);//there should be only 1 change: add constraint
 		Entity1 e = new Entity1();
 		e.id = 99999;//invalid id
 		db.insert(new EntityFKey("John", e));//added constraint must catch invalid id
@@ -50,7 +50,7 @@ public class TestManyToOne extends AbstractDatabaseTest {
 	@Test
 	public void testDropConstraint() throws Exception {
 		new SchemaGenerator(db).sync(Entity1.class, EntityFKey.class);
-		new SchemaGenerator(db).sync(Entity1.class, EntityFKeyNoConstraint.class);
+		new SchemaGenEx(db, 1).sync(Entity1.class, EntityFKeyNoConstraint.class);//there should be only 1 change: drop constraint
 		Entity1 e = new Entity1();
 		e.id = 99999;//invalid id
 		EntityFKey ef = db.insert(new EntityFKey("John", e));

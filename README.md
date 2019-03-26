@@ -47,9 +47,9 @@ SlimDbSync itself depends on eu.miltema.slimorm and javax.persistence. These are
 
 # Annotations
 
-SlimDbSync supports these javax.persistence annotations when declaring entities:
-* **@Table (name)** - without this annotation, SlimDbSync uses snake-case class name as table name. For example, class EmployeeDetails would be stored into table employee\_details
-* **@Column (name, nullable)** - without this annotation, SlimDbSync uses snake-case field name as column name. For example, field dateOfBirth would be stored into column date\_of\_birth
+SlimDbSync supports these javax.persistence annotations (listed with supported attributes) when declaring entities:
+* **@Table (name, uniqueConstraints)** - without this annotation, SlimDbSync uses snake-case class name as table name. For example, class EmployeeDetails would be stored into table employee\_details
+* **@Column (name, nullable, unique)** - without this annotation, SlimDbSync uses snake-case field name as column name. For example, field dateOfBirth would be stored into column date\_of\_birth
 * **@Transient** - annotation @Transient and Java modifier transient have the same effect: SlimDbSync will not create a column for this field in the database
 * **@Id** - declares a primary key field. Only single-field primary keys are supported - composite primary keys are not. SlimDbSync generates a corresponding primary key
 * **@GeneratedValue** - indicates that a sequence or identity is used as a default value for this column

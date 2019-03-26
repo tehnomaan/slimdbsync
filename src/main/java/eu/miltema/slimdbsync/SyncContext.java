@@ -15,6 +15,8 @@ public class SyncContext {
 	public Map<String, PrimaryKeyDef> dbPrimaryKeys; // tbl->PrimaryKeyDef
 	public Map<String, ForeignKeyDef> modelForeignKeys; //tbl/col->PrimaryKeyDef
 	public Map<String, ForeignKeyDef> dbForeignKeys; //tbl/col->PrimaryKeyDef
+	public Map<String, UniqueDef> modelUniques; //tbl/colList->UniqueDef
+	public Map<String, UniqueDef> dbUniques; //tbl/colList->UniqueDef
 
 	public String getSchema() {
 		return db.getSchema();

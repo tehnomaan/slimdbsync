@@ -13,4 +13,6 @@ public class PgColumn {
 
 	@Column(name = "column_default")
 	public String defaultValue;
+
+	public int ordinalPosition;
 }

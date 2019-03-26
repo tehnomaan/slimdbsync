@@ -6,8 +6,12 @@ import eu.miltema.slimorm.*;
 import java.util.*;
 import java.util.function.Consumer;
 
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+
 import static java.util.stream.Collectors.*;
 import java.sql.Statement;
+
 
 public class SchemaGenerator {
 
@@ -51,7 +55,7 @@ public class SchemaGenerator {
 			TableDef table = new TableDef();
 			table.name = eprop.tableName;
 			table.columns = eprop.fields.stream().map(fprop -> {
-				ColumnDef c = new ColumnDef(eprop, fprop, dbAdapter);
+				ModelColumnDef c = new ModelColumnDef(eprop, fprop, dbAdapter);
 				if (c.sourceSequence != null)
 					ctx.modelSequenceNames.add(c.sourceSequence);
 				return c;
@@ -61,6 +65,7 @@ public class SchemaGenerator {
 				ctx.modelPrimaryKeys.put(table.name, new PrimaryKeyDef(table.name, eprop.idField.columnName, null));
 		}
 		initModelForeignKeys(entityClasses);
+		initModelUniques(entityClasses);
 	}
 
 	private void initModelForeignKeys(Class<?>[] entityClasses) {
@@ -68,7 +73,7 @@ public class SchemaGenerator {
 		for(Class<?> clazz : entityClasses) {
 			EntityProperties eprops = db.getDialect().getProperties(clazz);
 			eprops.fields.stream().forEach(f -> {
-				ColumnDef coldef = ctx.modelTables.get(eprops.tableName).columns.get(f.columnName);
+				ModelColumnDef coldef = (ModelColumnDef) ctx.modelTables.get(eprops.tableName).columns.get(f.columnName);
 				if (coldef.isForeignKey) {
 					Class<?> targetClass = f.fieldType;
 					EntityProperties target = db.getDialect().getProperties(targetClass);
@@ -77,11 +82,37 @@ public class SchemaGenerator {
 						throw new SchemaUpdateException(f.field, ": @ManyToOne target class " + targetClass.getName() + " not registered with SchemaGenerator");
 					if (target.idField == null)
 						throw new SchemaUpdateException(f.field, ": @ManyToOne target class " + targetClass.getName() + " does not declare id-field");
-					coldef.type = ctx.modelTables.get(targetProps.tableName).columns.values().stream().filter(fcoldef -> fcoldef.isPrimaryKey).map(fcoldef -> fcoldef.type).findAny().orElse(null);
+					coldef.type = ctx.modelTables.get(targetProps.tableName).columns.values().stream().filter(fcoldef -> fcoldef.isPrimaryKey()).map(fcoldef -> fcoldef.type).findAny().orElse(null);
 					ForeignKeyDef fdef = new ForeignKeyDef(eprops.tableName, f.columnName, target.tableName, target.idField.columnName, null);
 					ctx.modelForeignKeys.put(fdef.localTable + "/" + fdef.localColumn, fdef);
 				}
 			});
+		}
+	}
+
+	private void initModelUniques(Class<?>[] entityClasses) {
+		ctx.modelUniques = new HashMap<>();
+		for(Class<?> clazz : entityClasses) {
+			EntityProperties eprops = db.getDialect().getProperties(clazz);
+			// Add fields with @Column(unique=true)
+			ctx.modelTables.get(eprops.tableName).columns.values().stream().map(coldef -> (ModelColumnDef) coldef).filter(coldef -> coldef.isUnique).forEach(coldef -> {
+				UniqueDef udef = new UniqueDef();
+				udef.tableName = eprops.tableName;
+				udef.columns = new String[] {coldef.name};
+				ctx.modelUniques.put(udef.toString(), udef);
+			});
+			// Add fields with @Table(uniqueConstraints = @UniqueConstraint(columnNames= {"abc", "xyz"}))
+			if (clazz.isAnnotationPresent(Table.class)) {
+				UniqueConstraint[] uca = clazz.getAnnotation(Table.class).uniqueConstraints();
+				if (uca != null)
+					for(UniqueConstraint uc : uca)
+						if (uc.columnNames() != null && uc.columnNames().length > 0) {
+							UniqueDef udef = new UniqueDef();
+							udef.tableName = eprops.tableName;
+							udef.columns = uc.columnNames();
+							ctx.modelUniques.put(udef.toString(), udef);
+						}
+			}
 		}
 	}
 
@@ -90,6 +121,7 @@ public class SchemaGenerator {
 		ctx.dbTables = dbAdapter.loadCurrentTables(db).stream().collect(toMap(def -> def.name, def -> def));
 		ctx.dbPrimaryKeys = dbAdapter.loadCurrentPrimaryKeys(db).stream().collect(toMap(pk -> pk.table, pk -> pk));
 		ctx.dbForeignKeys = dbAdapter.loadCurrentForeignKeys(db).stream().collect(toMap(fk -> fk.localTable + "/" + fk.localColumn, fk -> fk));
+		ctx.dbUniques = dbAdapter.loadCurrentUniques(db).stream().collect(toMap(u -> u.toString(), u -> u));
 	}
 
 	private void detectChanges(StringBuilder sb) {
@@ -104,6 +136,8 @@ public class SchemaGenerator {
 		detectRemovedPrimaryKeys(sb);
 		detectNewForeignKeys(sb);
 		detectRemovedForeignKeys(sb);
+		detectNewUniques(sb);
+		detectRemovedUniques(sb);
 		if (dropUnused) detectRemovedTables(sb);
 		if (dropUnused) detectRemovedSequences(sb);
 	}
@@ -122,6 +156,20 @@ public class SchemaGenerator {
 			forEach(dbf -> sb.append(dbAdapter.dropForeignKey(dbf.localTable, dbf.localColumn, dbf.constraintName)));
 	}
 
+	private void detectNewUniques(StringBuilder sb) {
+		ctx.modelUniques.keySet().stream().
+			filter(uname -> !ctx.dbUniques.containsKey(uname)).
+			map(uname -> ctx.modelUniques.get(uname)).
+			forEach(u -> sb.append(dbAdapter.createUnique(u)));
+	}
+
+	private void detectRemovedUniques(StringBuilder sb) {
+		ctx.dbUniques.keySet().stream().
+			filter(uname -> !ctx.modelUniques.containsKey(uname)).
+			map(uname -> ctx.dbUniques.get(uname)).
+			forEach(u -> sb.append(dbAdapter.dropUnique(u)));
+	}
+
 	private void detectRemovedPrimaryKeys(StringBuilder sb) {
 		for(PrimaryKeyDef pk : ctx.dbPrimaryKeys.values()) {
 			TableDef table = ctx.modelTables.get(pk.table);
@@ -129,14 +177,14 @@ public class SchemaGenerator {
 				continue;//a table was dropped: pk will be implicitly cascade-dropped
 			if (!table.columns.containsKey(pk.column))
 				continue;//pk column was removed; pk will be implicitly cascade-dropped
-			if (table.columns.get(pk.column).isPrimaryKey)
+			if (table.columns.get(pk.column).isPrimaryKey())
 				continue;//column is still primary key; don' drop the constraint
 			sb.append(dbAdapter.dropPrimaryKey(pk.table, pk.column, pk.constraintName));
 		}
 	}
 
 	private String getPrimaryKeyColumn(TableDef table) {
-		return table.columns.values().stream().filter(c -> c.isPrimaryKey).map(c -> c.name).findAny().orElse(null);
+		return table.columns.values().stream().filter(c -> c.isPrimaryKey()).map(c -> c.name).findAny().orElse(null);
 	}
 
 	private void detectNewSequences(StringBuilder sb) {

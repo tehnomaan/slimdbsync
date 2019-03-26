@@ -6,11 +6,15 @@ import java.sql.Timestamp;
 import java.time.*;
 import java.util.*;
 
+import com.google.gson.Gson;
+
 import eu.miltema.slimdbsync.*;
 import eu.miltema.slimorm.Database;
 
 /**
- * Adapter for PostgreSQL database
+ * Adapter for PostgreSQL database.
+ * See https://www.postgresql.org/docs/9.4/catalog-pg-constraint.html
+ *
  * @author Margus
  */
 public class PgAdapter implements DatabaseAdapter {
@@ -18,6 +22,7 @@ public class PgAdapter implements DatabaseAdapter {
 	private static final String ENDL = "\r\n";
 
 	private String schema;
+	private Collection<UniqueDef> uniques = new ArrayList<>();
 
 	public PgAdapter(String schema) {
 		this.schema = schema;
@@ -41,17 +46,28 @@ public class PgAdapter implements DatabaseAdapter {
 	}
 
 	private Map<String, ColumnDef> loadExistingColumns(Database db, String tablename) throws Exception {
-		return db.sql("SELECT * FROM information_schema.columns WHERE table_schema=? AND table_name=?", schema, tablename).
+		Map<String, ColumnDef> mapCols = db.sql("SELECT * FROM information_schema.columns WHERE table_schema=? AND table_name=?", schema, tablename).
 				stream(PgColumn.class).map(r -> {
 					ColumnDef col = new ColumnDef();
 					col.name = r.name;
 					col.type = r.dataType.toLowerCase();
 					col.isNullable = r.isNullable;
 					col.isJson = "json".equalsIgnoreCase(r.dataType);
+					col.ordinal = r.ordinalPosition;
 					if (r.defaultValue != null && r.defaultValue.startsWith("nextval('") && r.defaultValue.endsWith("'::regclass)"))
 						col.sourceSequence = r.defaultValue.substring(9, r.defaultValue.length() - 12);
 					return col;
 				}).collect(toMap(cdef -> cdef.name, cdef -> cdef));
+		uniques.addAll(db.sql("SELECT conname, conrelid::regclass, conkey::character varying FROM pg_constraint WHERE conrelid::regclass::character varying=? AND contype=?", tablename, "u").stream(PgUnique.class).map(pgu -> {
+			UniqueDef u = new UniqueDef();
+			u.name = pgu.conname;
+			u.tableName = pgu.conrelid;
+			String[] colnames = mapCols.values().stream().sorted((c1, c2) -> c1.ordinal - c2.ordinal).map(c -> c.name).toArray(String[]::new);
+			int[] ordinals = new Gson().fromJson(pgu.conkey.replace('{', '[').replace('}', ']'), int[].class);
+			u.columns = Arrays.stream(ordinals).mapToObj(o -> colnames[o]).toArray(String[]::new);
+			return u;
+		}).collect(toList()));
+		return mapCols;
 	}
 
 	@Override
@@ -70,6 +86,11 @@ public class PgAdapter implements DatabaseAdapter {
 				"  JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema " + 
 				"WHERE tc.constraint_type = ?";
 		return db.sql(sql, "FOREIGN KEY").stream(PgForeignKey.class).map(r -> new ForeignKeyDef(r.tableName, r.columnName, r.foreignTable, r.foreignColumn, r.constraintName)).collect(toList());
+	}
+
+	@Override
+	public Collection<UniqueDef> loadCurrentUniques(Database db) throws Exception {
+		return uniques;
 	}
 
 	@Override
@@ -168,5 +189,17 @@ public class PgAdapter implements DatabaseAdapter {
 	public String createForeignKey(ForeignKeyDef foreignKeyDef) {
 		return "ALTER TABLE \"" + foreignKeyDef.localTable + "\" ADD FOREIGN KEY (\"" + foreignKeyDef.localColumn +
 				"\") REFERENCES \"" + foreignKeyDef.foreignTable + "\"(\""+ foreignKeyDef.foreignColumn + "\");" + ENDL;
+	}
+
+	@Override
+	public String createUnique(UniqueDef u) {
+		String cname = u.tableName + "_" + Arrays.stream(u.columns).collect(joining("_"));
+		return "ALTER TABLE \"" + u.tableName + "\" ADD CONSTRAINT " + cname +
+				" UNIQUE (" + Arrays.stream(u.columns).map(c -> "\"" + c + "\"").collect(joining(", ")) + ");" + ENDL;
+	}
+
+	@Override
+	public String dropUnique(UniqueDef u) {
+		return "ALTER TABLE \"" + u.tableName + "\" DROP CONSTRAINT " + u.name + ";" + ENDL;
 	}
 }

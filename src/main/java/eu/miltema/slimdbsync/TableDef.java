@@ -6,4 +6,5 @@ public class TableDef {
 
 	public String name;
 	public Map<String, ColumnDef> columns;
+
 }

@@ -5,10 +5,10 @@ import static org.junit.Assert.assertEquals;
 import eu.miltema.slimdbsync.SchemaGenerator;
 import eu.miltema.slimorm.Database;
 
-public class DatabaseSyncEx extends SchemaGenerator {
+public class SchemaGenEx extends SchemaGenerator {
 	private int expectedStatementCount;
 
-	public DatabaseSyncEx(Database db, int expectedStatementCount) {
+	public SchemaGenEx(Database db, int expectedStatementCount) {
 		super(db);
 		this.expectedStatementCount = expectedStatementCount;
 	}

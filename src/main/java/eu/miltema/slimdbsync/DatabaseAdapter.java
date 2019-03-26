@@ -39,6 +39,14 @@ public interface DatabaseAdapter {
 	Collection<ForeignKeyDef> loadCurrentForeignKeys(Database db) throws Exception;
 
 	/**
+	 * Load current unique constraints from database
+	 * @param db database link
+	 * @return unique constraint definitions
+	 * @throws Exception when any error occurs
+	 */
+	Collection<UniqueDef> loadCurrentUniques(Database db) throws Exception;
+
+	/**
 	 * Provide CREATE TABLE statement (including column definitions)
 	 * @param tableDef table definition
 	 * @return DDL for table creation
@@ -136,4 +144,16 @@ public interface DatabaseAdapter {
 
 	@Deprecated//tuleb muuta tüüpi ja nullabilitit eraldi
 	String alterColumn(String name, ColumnDef col);
+
+	/**
+	 * @param uniqueDef unique constraint definition
+	 * @return SQL for creating unique constraint
+	 */
+	String createUnique(UniqueDef u);
+
+	/**
+	 * @param uniqueDef unique constraint definition
+	 * @return SQL for dropping unique constraint
+	 */
+	String dropUnique(UniqueDef u);
 }
