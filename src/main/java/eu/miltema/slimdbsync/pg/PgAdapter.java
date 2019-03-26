@@ -161,7 +161,7 @@ public class PgAdapter implements DatabaseAdapter {
 
 	@Override
 	public String dropForeignKey(String localTable, String localColumn, String constraintName) {
-		return "ALTER TABLE \"" + localTable + "\" DROP CONSTRAINT (\"" + constraintName + "\");" + ENDL;
+		return "ALTER TABLE \"" + localTable + "\" DROP CONSTRAINT \"" + constraintName + "\";" + ENDL;
 	}
 
 	@Override
