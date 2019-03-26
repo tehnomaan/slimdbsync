@@ -1,6 +1,6 @@
 package eu.miltema.slimdbsync.test;
 
-import javax.persistence.Table;
+import javax.persistence.*;
 
 /**
  * Entity similar to Entity1, but has 1 less field and 1 more field
@@ -8,5 +8,7 @@ import javax.persistence.Table;
 @Table(name = "entity1")
 public class Entity1Columns {
 	int id;
-	int count2;
+
+	@Column(nullable = false)
+	Integer count2;
 }

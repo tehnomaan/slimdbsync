@@ -87,7 +87,7 @@ public class TestBasics extends AbstractDatabaseTest {
 		new DatabaseSyncEx(db, 2).sync(Entity1Columns.class);//drop name; add count2
 		Entity1Columns e = new Entity1Columns();
 		e.count2 = 123;
-		assertEquals(123, db.insert(e).count2);
+		assertEquals(123, db.insert(e).count2.intValue());
 	}
 
 	@Test(expected = SQLException.class)
@@ -112,5 +112,17 @@ public class TestBasics extends AbstractDatabaseTest {
 		db.insert(new Entity1("John"));
 		new SchemaGenerator(db).dropUnused(false).sync(Entity2.class);
 		assertEquals(1, db.listAll(Entity1.class).size());
+	}
+
+	@Test
+	public void columnIsNullable() throws Exception {
+		new SchemaGenerator(db).sync(Entity1.class);
+		assertNull(db.insert(new Entity1(null)).name);
+	}
+
+	@Test(expected = SQLException.class)
+	public void columnIsNotNullable() throws Exception {
+		new SchemaGenerator(db).sync(Entity1Columns.class);
+		db.insert(new Entity1Columns());//count2 cannot be null: SQLException will be thrown
 	}
 }
