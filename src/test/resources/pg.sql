@@ -12,6 +12,7 @@ DROP TABLE IF EXISTS public.custom_table CASCADE;
 DROP SEQUENCE IF EXISTS public.entity_fkey_id_seq;
 DROP SEQUENCE IF EXISTS public.entity1_id_seq;
 DROP SEQUENCE IF EXISTS public.id_seq2;
+DROP SEQUENCE IF EXISTS public.id_seq3;
 DROP SEQUENCE IF EXISTS public.entity3_id_seq;
 DROP SEQUENCE IF EXISTS public.entity4_id_seq;
 DROP SEQUENCE IF EXISTS public.entity5_id_seq;

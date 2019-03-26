@@ -142,8 +142,29 @@ public interface DatabaseAdapter {
 	 */
 	boolean supportsIdentityStrategy();
 
-	@Deprecated//tuleb muuta tüüpi ja nullabilitit eraldi
-	String alterColumn(String name, ColumnDef col);
+	/**
+	 * @param tableName table name
+	 * @param columnName column name
+	 * @param sqlType sql type
+	 * @return SQL for altering column type
+	 */
+	String alterColumnType(String tableName, String columnName, String sqlType);
+
+	/**
+	 * @param tableName table name
+	 * @param columnName column name
+	 * @param isNullable
+	 * @return SQL for altering column nullability
+	 */
+	String alterColumnNullability(String tableName, String columnName, boolean isNullable);
+
+	/**
+	 * @param tableName table name
+	 * @param columnName column name
+	 * @param sourceSequence sequence name for default value
+	 * @return SQL for changing column default value
+	 */
+	String alterColumnDefaultValue(String tableName, String columnName, String sourceSequence);
 
 	/**
 	 * @param uniqueDef unique constraint definition

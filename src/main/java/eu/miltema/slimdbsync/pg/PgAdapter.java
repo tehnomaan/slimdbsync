@@ -95,24 +95,19 @@ public class PgAdapter implements DatabaseAdapter {
 
 	@Override
 	public String createTableWithColumns(TableDef tableDef) {
-		String columns = tableDef.columns.values().stream().map(coldef -> getColumnDefinition(coldef, false)).collect(joining("," + ENDL + "  "));
+		String columns = tableDef.columns.values().stream().map(coldef -> getColumnDefinition(coldef)).collect(joining("," + ENDL + "  "));
 		return "CREATE TABLE \"" + tableDef.name + "\"(" + ENDL + "  " + columns + ENDL + ");" + ENDL;
 	}
 
-	public String getColumnDefinition(ColumnDef cdef, boolean includeTypeWord) {
+	public String getColumnDefinition(ColumnDef cdef) {
 		if (cdef.columnDefinitionOverride != null)
-			return "\"" + cdef.name + "\" " + (includeTypeWord ? "TYPE " : "") + cdef.columnDefinitionOverride;
-		return "\"" + cdef.name + "\" " + (includeTypeWord ? "TYPE " : "") + cdef.type + (cdef.isNullable ? "" : " NOT NULL") + (cdef.sourceSequence == null ? "" : " " + "DEFAULT nextval('" + cdef.sourceSequence + "'::regclass)");
+			return "\"" + cdef.name + "\" " + cdef.columnDefinitionOverride;
+		return "\"" + cdef.name + "\" " + cdef.type + (cdef.isNullable ? "" : " NOT NULL") + (cdef.sourceSequence == null ? "" : " " + "DEFAULT nextval('" + cdef.sourceSequence + "'::regclass)");
 	}
 
 	@Override
 	public String addColumn(String tableName, ColumnDef column) {
-		return "ALTER TABLE \"" + tableName + "\" ADD COLUMN " + getColumnDefinition(column, false) + ";" + ENDL;
-	}
-
-	@Override
-	public String alterColumn(String tableName, ColumnDef column) {
-		return "ALTER TABLE \"" + tableName + "\" ALTER COLUMN " + getColumnDefinition(column, true) + ";" + ENDL;
+		return "ALTER TABLE \"" + tableName + "\" ADD COLUMN " + getColumnDefinition(column) + ";" + ENDL;
 	}
 
 	@Override
@@ -201,5 +196,20 @@ public class PgAdapter implements DatabaseAdapter {
 	@Override
 	public String dropUnique(UniqueDef u) {
 		return "ALTER TABLE \"" + u.tableName + "\" DROP CONSTRAINT " + u.name + ";" + ENDL;
+	}
+
+	@Override
+	public String alterColumnType(String tableName, String columnName, String sqlType) {
+		return "ALTER TABLE \"" + tableName + "\" ALTER COLUMN \"" + columnName + "\" TYPE " + sqlType + ";" + ENDL;
+	}
+
+	@Override
+	public String alterColumnNullability(String tableName, String columnName, boolean isNullable) {
+		return "ALTER TABLE \"" + tableName + "\" ALTER COLUMN \"" + columnName + (isNullable ? "\" DROP NOT NULL;" : "\" SET NOT NULL;") + ENDL;
+	}
+
+	@Override
+	public String alterColumnDefaultValue(String tableName, String columnName, String sourceSequence) {
+		return "ALTER TABLE \"" + tableName + "\" ALTER COLUMN \"" + columnName + "\" SET DEFAULT " + (sourceSequence == null ? "null" : " " + "nextval('" + sourceSequence + "'::regclass)") + ";" + ENDL;
 	}
 }

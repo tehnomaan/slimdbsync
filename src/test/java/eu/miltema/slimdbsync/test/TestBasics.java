@@ -115,14 +115,44 @@ public class TestBasics extends AbstractDatabaseTest {
 	}
 
 	@Test
-	public void columnIsNullable() throws Exception {
+	public void testColumnIsNullable() throws Exception {
 		new SchemaGenerator(db).sync(Entity1.class);
 		assertNull(db.insert(new Entity1(null)).name);
 	}
 
 	@Test(expected = SQLException.class)
-	public void columnIsNotNullable() throws Exception {
+	public void testColumnIsNotNullable() throws Exception {
 		new SchemaGenerator(db).sync(Entity1Columns.class);
 		db.insert(new Entity1Columns());//count2 cannot be null: SQLException will be thrown
+	}
+
+	@Test
+	public void testAlterColumn1() throws Exception {
+		new SchemaGenerator(db).sync(Entity2.class);
+		new SchemaGenEx(db, 5).sync(Entity2Altered.class);//5 changes: id default value, name nullability, count2 type, drop id_seq2, add id_seq3
+		Entity2Altered e = new Entity2Altered();
+		e.name = "John";
+		e.count2 = 20000;
+		assertEquals(20000, db.insert(e).count2.shortValue());
+	}
+
+	@Test
+	public void testAlterColumn2() throws Exception {
+		new SchemaGenerator(db).sync(Entity2Altered.class);
+		new SchemaGenEx(db, 5).sync(Entity2.class);//5 changes: id default value, name nullability, count2 type, drop id_seq3, add id_seq2
+		Entity2 e = new Entity2();
+		e.count2 = 123;
+		e = db.insert(e);
+		assertNull(e.name);
+		assertEquals(123, e.count2.intValue());
+	}
+
+	@Test(expected = SQLException.class)
+	public void testAlterColumn3() throws Exception {
+		new SchemaGenerator(db).sync(Entity2.class);//5 changes: id default value, name nullability, count2 type, drop id_seq2, add id_seq3
+		new SchemaGenEx(db, 5).sync(Entity2Altered.class);
+		Entity2 e = new Entity2();
+		e.count2 = 123;
+		db.insert(e);//name is null, NOT NULL constraint must throw exception
 	}
 }

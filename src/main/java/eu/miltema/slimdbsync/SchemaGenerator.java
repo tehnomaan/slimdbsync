@@ -217,12 +217,15 @@ public class SchemaGenerator {
 		newTable.columns.values().stream().
 			filter(col -> existingCols.containsKey(col.name)).
 			filter(col -> col.columnDefinitionOverride == null). // if manual column definition is present, then we won't manage changes, because new/existing comparison is inaccurate
-			filter(col -> {
+			forEach(col -> {
 				ColumnDef col2 = existingCols.get(col.name);
-				return (col.isNullable != col2.isNullable || col.isJson != col2.isJson ||
-						!Objects.equals(col.sourceSequence, col2.sourceSequence) || !Objects.equals(col.type, col2.type));
-			}).
-			forEach(col -> sb.append(dbAdapter.alterColumn(newTable.name, col)));
+				if (!Objects.equals(col.type, col2.type))
+					sb.append(dbAdapter.alterColumnType(newTable.name, col.name, col.type));
+				if (col.isNullable != col2.isNullable)
+					sb.append(dbAdapter.alterColumnNullability(newTable.name, col.name, col.isNullable));
+				if (!Objects.equals(col.sourceSequence, col2.sourceSequence))
+					sb.append(dbAdapter.alterColumnDefaultValue(newTable.name, col.name, col.sourceSequence));
+			});
 	}
 
 	private void detectRemovedColumns(TableDef newTable, StringBuilder sb) {
