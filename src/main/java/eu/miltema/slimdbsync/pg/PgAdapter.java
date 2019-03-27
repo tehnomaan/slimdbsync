@@ -132,6 +132,7 @@ public class PgAdapter implements DatabaseAdapter {
 		else if (javaType == ZonedDateTime.class) return "timestamp with time zone";
 		else if (javaType == LocalDate.class) return "date";
 		else if (javaType == LocalDateTime.class) return "timestamp without time zone";
+		else if (javaType.isEnum()) return "character varying";
 		else throw new SchemaUpdateException("Unsupported type " + javaType.getSimpleName());
 	}
 

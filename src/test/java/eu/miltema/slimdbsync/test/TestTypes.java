@@ -10,6 +10,7 @@ import org.junit.*;
 import org.junit.runners.MethodSorters;
 
 import eu.miltema.slimdbsync.*;
+import eu.miltema.slimdbsync.test.EntityWithTypes.Enum1;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class TestTypes extends AbstractDatabaseTest {
@@ -137,5 +138,11 @@ public class TestTypes extends AbstractDatabaseTest {
 	public void testJSon() throws Exception {
 		db.insert(new EntityWithTypes(x -> x.fJson = new String[] {"abc", "def"}));
 		assertEquals("def", fetch().fJson[1]);
+	}
+
+	@Test
+	public void testEnum() throws Exception {
+		db.insert(new EntityWithTypes(x -> x.fEnum = Enum1.Jack));
+		assertEquals(Enum1.Jack, fetch().fEnum);
 	}
 }

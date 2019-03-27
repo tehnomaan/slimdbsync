@@ -30,6 +30,8 @@ public class EntityWithTypes {
 	public LocalDate fLocalDate;
 	public LocalDateTime fLocalDateTime;
 	@JSon public String[] fJson;
+	public enum Enum1 {Jack, John, Joe};
+	public Enum1 fEnum;
 
 	public EntityWithTypes() {
 	}
