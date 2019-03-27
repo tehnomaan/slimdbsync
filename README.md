@@ -92,7 +92,7 @@ By default, SlimDbSync uses PostgreSQL dialect.
 # Data Types
 
 SlimDbSync supports these Java types by:
-String, byte, Byte, short, Short, int, Integer, long, Long, float, Float, double, Double, BigDecimal, byte[], Timestamp, Instant, Date, LocalDate, LocalDateTime, ZonedDateTime.
+String, byte, Byte, short, Short, int, Integer, long, Long, float, Float, double, Double, BigDecimal, byte[], Timestamp, Instant, Date, LocalDate, LocalDateTime, ZonedDateTime, enum.
 
 Be aware that PostgreSQL does not store timezone id into record (even when data type is _with time zone_). Therefore, all time-related columns store correct instant in time, but have lost the original timezone id.
 
