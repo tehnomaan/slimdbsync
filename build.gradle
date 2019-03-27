@@ -42,7 +42,7 @@ eclipse {
 }
 dependencies {
 //	implementation 'javax.persistence:persistence-api:1.0.2'
-//	implementation 'com.google.code.gson:gson:2.8.5'
+	implementation 'com.google.code.gson:gson:2.8.5'
 //	implementation files("lib/slimorm-1.1.2.jar")
 	implementation 'eu.miltema:slimorm:1.2.0'
 	testImplementation 'junit:junit:4.12'

@@ -3,16 +3,11 @@ package eu.miltema.slimdbsync;
 import eu.miltema.slimdbsync.def.*;
 import eu.miltema.slimdbsync.pg.PgAdapter;
 import eu.miltema.slimorm.*;
-
 import java.util.*;
 import java.util.function.Consumer;
-
-import javax.persistence.Table;
-import javax.persistence.UniqueConstraint;
-
 import static java.util.stream.Collectors.*;
+import javax.persistence.*;
 import java.sql.Statement;
-
 
 public class SchemaGenerator {
 
@@ -37,14 +32,22 @@ public class SchemaGenerator {
 	/**
 	 * Synchronize database tables according to entity classes
 	 * @param entityClasses entity classes
-	 * @throws Exception 
+	 * @throws SchemaUpdateException when schema updating fails 
 	 */
-	public void sync(Class<?> ... entityClasses) throws Exception {
-		initModelTables(entityClasses);
-		loadCurrentSchema();
-		StringBuilder sb = new StringBuilder();
-		detectChanges(sb);
-		applyChanges(sb.toString());
+	public void sync(Class<?> ... entityClasses) throws SchemaUpdateException {
+		try {
+			initModelTables(entityClasses);
+			loadCurrentSchema();
+			StringBuilder sb = new StringBuilder();
+			detectChanges(sb);
+			applyChanges(sb.toString());
+		}
+		catch(SchemaUpdateException sue) {
+			throw sue;
+		}
+		catch(Exception e) {
+			throw new SchemaUpdateException(e);
+		}
 	}
 
 	private void initModelTables(Class<?>[] entityClasses) throws SchemaUpdateException {

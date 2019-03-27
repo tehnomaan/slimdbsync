@@ -8,6 +8,10 @@ public class SchemaUpdateException extends RuntimeException {
 		super(message);
 	}
 
+	public SchemaUpdateException(Exception cause) {
+		super(cause);
+	}
+
 	public SchemaUpdateException(Field field, String message) {
 		super(ref(field) + message);
 	}

@@ -88,6 +88,7 @@ public interface DatabaseAdapter {
 
 	/**
 	 * Get default sequence name for database column
+	 * @param tablename table name
 	 * @param columnName column name
 	 * @return sequence name
 	 */
@@ -126,11 +127,17 @@ public interface DatabaseAdapter {
 
 	/**
 	 * Provide statement for creating foreign key constraint 
-	 * @param foreignKeyDef foreign key definition
-	 * @return DDL for creating constraint
+	 * @param localTable local table name
+	 * @param localColumn local column name
+	 * @param constraintName constraint name
+	 * @return DDL for dropping foreign key constraint
 	 */
 	String dropForeignKey(String localTable, String localColumn, String constraintName);
 
+	/**
+	 * @param foreignKeyDef foreign key definition
+	 * @return DDL for creating foreign key constraint
+	 */
 	String createForeignKey(ForeignKeyDef foreignKeyDef);
 
 	/**
@@ -155,15 +162,15 @@ public interface DatabaseAdapter {
 	 * @param tableName table name
 	 * @param columnName column name
 	 * @param sqlType sql type
-	 * @return SQL for altering column type
+	 * @return DDL for altering column type
 	 */
 	String alterColumnType(String tableName, String columnName, String sqlType);
 
 	/**
 	 * @param tableName table name
 	 * @param columnName column name
-	 * @param isNullable
-	 * @return SQL for altering column nullability
+	 * @param isNullable true, if column should become nullable
+	 * @return DDL for altering column nullability
 	 */
 	String alterColumnNullability(String tableName, String columnName, boolean isNullable);
 
@@ -171,31 +178,31 @@ public interface DatabaseAdapter {
 	 * @param tableName table name
 	 * @param columnName column name
 	 * @param sourceSequence sequence name for default value
-	 * @return SQL for changing column default value
+	 * @return DDL for changing column default value
 	 */
 	String alterColumnDefaultValue(String tableName, String columnName, String sourceSequence);
 
 	/**
 	 * @param uniqueDef unique constraint definition
-	 * @return SQL for creating unique constraint
+	 * @return DDL for creating unique constraint
 	 */
-	String createUnique(UniqueDef u);
+	String createUnique(UniqueDef uniqueDef);
 
 	/**
 	 * @param uniqueDef unique constraint definition
-	 * @return SQL for dropping unique constraint
+	 * @return DDL for dropping unique constraint
 	 */
-	String dropUnique(UniqueDef u);
+	String dropUnique(UniqueDef uniqueDef);
 
 	/**
 	 * @param indexDef index definition
-	 * @return SQL for creating index
+	 * @return DDL for creating index
 	 */
 	String createIndex(IndexDef indexDef);
 
 	/**
 	 * @param indexDef index definition
-	 * @return SQL for dropping index
+	 * @return DDL for dropping index
 	 */
 	String dropIndex(IndexDef indexDef);
 }
