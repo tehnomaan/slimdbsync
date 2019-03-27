@@ -1,4 +1,4 @@
-package eu.miltema.slimdbsync;
+package eu.miltema.slimdbsync.def;
 
 public class ColumnDef {
 	public String name;

@@ -1,4 +1,4 @@
-package eu.miltema.slimdbsync;
+package eu.miltema.slimdbsync.def;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;

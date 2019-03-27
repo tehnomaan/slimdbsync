@@ -1,7 +1,10 @@
-package eu.miltema.slimdbsync;
+package eu.miltema.slimdbsync.def;
 
 import java.lang.reflect.Field;
 import javax.persistence.*;
+
+import eu.miltema.slimdbsync.DatabaseAdapter;
+import eu.miltema.slimdbsync.SchemaUpdateException;
 import eu.miltema.slimorm.*;
 
 public class ModelColumnDef extends ColumnDef {

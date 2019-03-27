@@ -2,6 +2,11 @@ package eu.miltema.slimdbsync;
 
 import java.util.*;
 
+import eu.miltema.slimdbsync.def.ColumnDef;
+import eu.miltema.slimdbsync.def.ForeignKeyDef;
+import eu.miltema.slimdbsync.def.PrimaryKeyDef;
+import eu.miltema.slimdbsync.def.TableDef;
+import eu.miltema.slimdbsync.def.UniqueDef;
 import eu.miltema.slimorm.Database;
 
 public interface DatabaseAdapter {

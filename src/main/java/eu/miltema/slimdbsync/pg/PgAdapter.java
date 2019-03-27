@@ -9,6 +9,11 @@ import java.util.*;
 import com.google.gson.Gson;
 
 import eu.miltema.slimdbsync.*;
+import eu.miltema.slimdbsync.def.ColumnDef;
+import eu.miltema.slimdbsync.def.ForeignKeyDef;
+import eu.miltema.slimdbsync.def.PrimaryKeyDef;
+import eu.miltema.slimdbsync.def.TableDef;
+import eu.miltema.slimdbsync.def.UniqueDef;
 import eu.miltema.slimorm.Database;
 
 /**
