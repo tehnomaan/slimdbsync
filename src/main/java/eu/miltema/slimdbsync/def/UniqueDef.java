@@ -9,6 +9,7 @@ public class UniqueDef {
 	public String[] columns;
 
 	@Override
+	@Deprecated
 	public boolean equals(Object object) {
 		if (object == null || !(object instanceof UniqueDef))
 			return false;

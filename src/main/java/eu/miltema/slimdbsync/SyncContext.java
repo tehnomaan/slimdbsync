@@ -2,10 +2,7 @@ package eu.miltema.slimdbsync;
 
 import java.util.*;
 
-import eu.miltema.slimdbsync.def.ForeignKeyDef;
-import eu.miltema.slimdbsync.def.PrimaryKeyDef;
-import eu.miltema.slimdbsync.def.TableDef;
-import eu.miltema.slimdbsync.def.UniqueDef;
+import eu.miltema.slimdbsync.def.*;
 import eu.miltema.slimorm.Database;
 
 public class SyncContext {
@@ -21,6 +18,8 @@ public class SyncContext {
 	public Map<String, ForeignKeyDef> dbForeignKeys; //tbl/col->PrimaryKeyDef
 	public Map<String, UniqueDef> modelUniques; //tbl/colList->UniqueDef
 	public Map<String, UniqueDef> dbUniques; //tbl/colList->UniqueDef
+	public Map<String, IndexDef> modelIndexes; //tbl/colList->IndexDef
+	public Map<String, IndexDef> dbIndexes; //tbl/colList->IndexDef
 
 	public String getSchema() {
 		return db.getSchema();

@@ -53,13 +53,15 @@ SlimDbSync supports these javax.persistence annotations (listed with supported a
 * **@Transient** - annotation @Transient and Java modifier transient have the same effect: SlimDbSync will not create a column for this field in the database
 * **@Id** - declares a primary key field. Only single-field primary keys are supported - composite primary keys are not. SlimDbSync generates a corresponding primary key
 * **@GeneratedValue** - indicates that a sequence or identity is used as a default value for this column
-* **@ManyToOne** (targetEntity, optional) - indicates that this is a foreign key field. Field type must be elementary type to store key value, not target entity class.
+* **@ManyToOne** - indicates that this is a foreign key field. Field type must be elementary type to store key value, not target entity class.
 * **@JSon** - declares that this field will be stored as a JSon object. This is not a javax.persistence annotation, but SlimDbSync annotation
+* **@Indexes** - this SlimDbSync annotation declares the indexes for this table. Several indexes can be declared, for example @Indexes({@Index("id"), @Index({"dateOfBirth", "name"})})
 
 For example:
 
 ```java
 @Table(name="employees")
+@Indexes(@Index("name"))
 public class Employee {
 	@Id
 	@GeneratedValue
@@ -77,8 +79,8 @@ public class Employee {
 
 	@JSon Contract[] contracts;
 
-	@ManyToOne(targetEntity=Department.class, optional=false)
-	int departmentId;
+	@ManyToOne
+	Department department;
 }
 ```
 

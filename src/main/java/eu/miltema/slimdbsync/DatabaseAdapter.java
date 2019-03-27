@@ -2,11 +2,7 @@ package eu.miltema.slimdbsync;
 
 import java.util.*;
 
-import eu.miltema.slimdbsync.def.ColumnDef;
-import eu.miltema.slimdbsync.def.ForeignKeyDef;
-import eu.miltema.slimdbsync.def.PrimaryKeyDef;
-import eu.miltema.slimdbsync.def.TableDef;
-import eu.miltema.slimdbsync.def.UniqueDef;
+import eu.miltema.slimdbsync.def.*;
 import eu.miltema.slimorm.Database;
 
 public interface DatabaseAdapter {
@@ -50,6 +46,14 @@ public interface DatabaseAdapter {
 	 * @throws Exception when any error occurs
 	 */
 	Collection<UniqueDef> loadCurrentUniques(Database db) throws Exception;
+
+	/**
+	 * Load current indexes from database
+	 * @param db database link
+	 * @return index definitions
+	 * @throws Exception when any error occurs
+	 */
+	Collection<IndexDef> loadCurrentIndexes(Database db) throws Exception;
 
 	/**
 	 * Provide CREATE TABLE statement (including column definitions)
@@ -182,4 +186,16 @@ public interface DatabaseAdapter {
 	 * @return SQL for dropping unique constraint
 	 */
 	String dropUnique(UniqueDef u);
+
+	/**
+	 * @param indexDef index definition
+	 * @return SQL for creating index
+	 */
+	String createIndex(IndexDef indexDef);
+
+	/**
+	 * @param indexDef index definition
+	 * @return SQL for dropping index
+	 */
+	String dropIndex(IndexDef indexDef);
 }

@@ -1,11 +1,6 @@
 package eu.miltema.slimdbsync;
 
-import eu.miltema.slimdbsync.def.ColumnDef;
-import eu.miltema.slimdbsync.def.ForeignKeyDef;
-import eu.miltema.slimdbsync.def.ModelColumnDef;
-import eu.miltema.slimdbsync.def.PrimaryKeyDef;
-import eu.miltema.slimdbsync.def.TableDef;
-import eu.miltema.slimdbsync.def.UniqueDef;
+import eu.miltema.slimdbsync.def.*;
 import eu.miltema.slimdbsync.pg.PgAdapter;
 import eu.miltema.slimorm.*;
 
@@ -72,6 +67,7 @@ public class SchemaGenerator {
 		}
 		initModelForeignKeys(entityClasses);
 		initModelUniques(entityClasses);
+		initModelIndexes(entityClasses);
 	}
 
 	private void initModelForeignKeys(Class<?>[] entityClasses) {
@@ -122,12 +118,31 @@ public class SchemaGenerator {
 		}
 	}
 
+	private void initModelIndexes(Class<?>[] entityClasses) {
+		ctx.modelIndexes = new HashMap<>();
+		for(Class<?> clazz : entityClasses) {
+			EntityProperties eprops = db.getDialect().getProperties(clazz);
+			if (clazz.isAnnotationPresent(Indexes.class)) {
+				Index[] indexes = clazz.getAnnotation(Indexes.class).value();
+				if (indexes != null && indexes.length > 0)
+					for(Index index : indexes)
+						if (index.value() != null && index.value().length > 0) {
+							IndexDef idef = new IndexDef();
+							idef.tableName = eprops.tableName;
+							idef.columns = index.value();
+							ctx.modelIndexes.put(idef.toString(), idef);
+						}
+			}
+		}
+	}
+
 	private void loadCurrentSchema() throws Exception {
 		ctx.dbSequenceNames = dbAdapter.loadCurrentSequenceNames(db);
 		ctx.dbTables = dbAdapter.loadCurrentTables(db).stream().collect(toMap(def -> def.name, def -> def));
 		ctx.dbPrimaryKeys = dbAdapter.loadCurrentPrimaryKeys(db).stream().collect(toMap(pk -> pk.table, pk -> pk));
 		ctx.dbForeignKeys = dbAdapter.loadCurrentForeignKeys(db).stream().collect(toMap(fk -> fk.localTable + "/" + fk.localColumn, fk -> fk));
 		ctx.dbUniques = dbAdapter.loadCurrentUniques(db).stream().collect(toMap(u -> u.toString(), u -> u));
+		ctx.dbIndexes = dbAdapter.loadCurrentIndexes(db).stream().collect(toMap(u -> u.toString(), u -> u));
 	}
 
 	private void detectChanges(StringBuilder sb) {
@@ -144,6 +159,8 @@ public class SchemaGenerator {
 		detectRemovedForeignKeys(sb);
 		detectNewUniques(sb);
 		detectRemovedUniques(sb);
+		detectNewIndexes(sb);
+		detectRemovedIndexes(sb);
 		if (dropUnused) detectRemovedTables(sb);
 		if (dropUnused) detectRemovedSequences(sb);
 	}
@@ -174,6 +191,21 @@ public class SchemaGenerator {
 			filter(uname -> !ctx.modelUniques.containsKey(uname)).
 			map(uname -> ctx.dbUniques.get(uname)).
 			forEach(u -> sb.append(dbAdapter.dropUnique(u)));
+	}
+
+	private void detectNewIndexes(StringBuilder sb) {
+		ctx.modelIndexes.keySet().stream().
+			filter(iname -> !ctx.dbIndexes.containsKey(iname)).
+			map(iname -> ctx.modelIndexes.get(iname)).
+			forEach(idef -> sb.append(dbAdapter.createIndex(idef)));
+	}
+
+	private void detectRemovedIndexes(StringBuilder sb) {
+		ctx.dbIndexes.keySet().stream().
+			filter(iname -> !ctx.modelIndexes.containsKey(iname)).
+			map(iname -> ctx.dbIndexes.get(iname)).
+			filter(idef -> !idef.isUniqueIndex).//don't drop unique indexes; these are used for @Unique columns (at least in postgre)
+			forEach(idef -> sb.append(dbAdapter.dropIndex(idef)));
 	}
 
 	private void detectRemovedPrimaryKeys(StringBuilder sb) {

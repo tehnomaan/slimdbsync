@@ -9,11 +9,7 @@ import java.util.*;
 import com.google.gson.Gson;
 
 import eu.miltema.slimdbsync.*;
-import eu.miltema.slimdbsync.def.ColumnDef;
-import eu.miltema.slimdbsync.def.ForeignKeyDef;
-import eu.miltema.slimdbsync.def.PrimaryKeyDef;
-import eu.miltema.slimdbsync.def.TableDef;
-import eu.miltema.slimdbsync.def.UniqueDef;
+import eu.miltema.slimdbsync.def.*;
 import eu.miltema.slimorm.Database;
 
 /**
@@ -96,6 +92,19 @@ public class PgAdapter implements DatabaseAdapter {
 	@Override
 	public Collection<UniqueDef> loadCurrentUniques(Database db) throws Exception {
 		return uniques;
+	}
+
+	@Override
+	public Collection<IndexDef> loadCurrentIndexes(Database db) throws Exception {
+		final String sql = "SELECT * FROM pg_indexes WHERE schemaname=?";
+		return db.sql(sql, schema).stream(PgIndex.class).map(pgi -> {
+			IndexDef idef = new IndexDef();
+			idef.name = pgi.indexname;
+			idef.tableName = pgi.tablename;
+			idef.isUniqueIndex = pgi.indexdef.toUpperCase().contains("CREATE UNIQUE INDEX");
+			idef.columns = pgi.indexdef.substring(pgi.indexdef.indexOf('('),pgi.indexdef.indexOf(')')).split(",");
+			return idef;
+		}).collect(toList());
 	}
 
 	@Override
@@ -202,6 +211,16 @@ public class PgAdapter implements DatabaseAdapter {
 	@Override
 	public String dropUnique(UniqueDef u) {
 		return "ALTER TABLE \"" + u.tableName + "\" DROP CONSTRAINT " + u.name + ";" + ENDL;
+	}
+
+	@Override
+	public String createIndex(IndexDef indexDef) {
+		return "CREATE INDEX ON \"" + indexDef.tableName + "\" (" + Arrays.stream(indexDef.columns).map(c -> "\"" + c + "\"").collect(joining(", ")) + ");" + ENDL;
+	}
+
+	@Override
+	public String dropIndex(IndexDef indexDef) {
+		return "DROP INDEX IF EXISTS " + indexDef.name + ";" + ENDL;
 	}
 
 	@Override
