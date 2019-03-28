@@ -1,6 +1,7 @@
 package eu.miltema.slimdbsync.pg;
 
-public class PgUnique {
+public class PgCheck {
 	String conname;
 	String conkey;
+	String consrc;
 }

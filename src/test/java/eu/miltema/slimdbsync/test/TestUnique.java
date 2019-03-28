@@ -70,4 +70,11 @@ public class TestUnique extends AbstractDatabaseTest {
 		db.insert(new Entity2UniqueFields("John", 16));
 		db.insert(new Entity2UniqueFields("John", 16));
 	}
+
+	public void testNoChanges() throws Exception {
+		new SchemaGenerator(db).sync(Entity2UniqueField.class);
+		new SchemaGenEx(db, 0).sync(Entity2UniqueField.class);
+		new SchemaGenerator(db).sync(Entity2UniqueFields.class);
+		new SchemaGenEx(db, 0).sync(Entity2UniqueFields.class);
+	}
 }

@@ -18,6 +18,8 @@ public class SyncContext {
 	public Map<String, ForeignKeyDef> dbForeignKeys; //tbl/col->PrimaryKeyDef
 	public Map<String, UniqueDef> modelUniques; //tbl/colList->UniqueDef
 	public Map<String, UniqueDef> dbUniques; //tbl/colList->UniqueDef
+	public Map<String, CheckDef> modelChecks; //tbl/col/valList->CheckDef
+	public Map<String, CheckDef> dbChecks; //tbl/col/valList->CheckDef
 	public Map<String, IndexDef> modelIndexes; //tbl/colList->IndexDef
 	public Map<String, IndexDef> dbIndexes; //tbl/colList->IndexDef
 

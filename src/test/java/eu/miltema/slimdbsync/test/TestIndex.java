@@ -34,4 +34,10 @@ public class TestIndex extends AbstractDatabaseTest {
 		new SchemaGenerator(db).sync(Entity2Index.class);
 		new SchemaGenEx(db, 2).sync(Entity2.class);//drop 2 indexes declared in Entity2Index header
 	}
+
+	@Test
+	public void testNoChanges() throws Exception {
+		new SchemaGenerator(db).sync(Entity2Index.class);
+		new SchemaGenEx(db, 2).sync(Entity2Index.class);
+	}
 }

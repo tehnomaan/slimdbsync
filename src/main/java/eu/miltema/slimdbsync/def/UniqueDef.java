@@ -9,16 +9,7 @@ public class UniqueDef {
 	public String[] columns;
 
 	@Override
-	@Deprecated
-	public boolean equals(Object object) {
-		if (object == null || !(object instanceof UniqueDef))
-			return false;
-		UniqueDef udef = (UniqueDef) object;
-		return tableName.equals(udef.tableName) && Arrays.equals(columns, udef.columns);
-	}
-
-	@Override
 	public String toString() {
-		return name + "/" + Arrays.stream(columns).collect(Collectors.joining(","));
+		return tableName + "/" + Arrays.stream(columns).collect(Collectors.joining(","));
 	}
 }

@@ -21,12 +21,6 @@ public class TestBasics extends AbstractDatabaseTest {
 	}
 
 	@Test
-	public void testNoChanges() throws Exception {
-		new SchemaGenerator(db).sync(EntityWithTypes.class);
-		new SchemaGenEx(db, 0).sync(EntityWithTypes.class);
-	}
-
-	@Test
 	public void testCreateTable() throws Exception {
 		new SchemaGenerator(db).sync(Entity0.class);
 		db.insert(new Entity0());
@@ -140,9 +134,7 @@ public class TestBasics extends AbstractDatabaseTest {
 	public void testAlterColumn2() throws Exception {
 		new SchemaGenerator(db).sync(Entity2Altered.class);
 		new SchemaGenEx(db, 5).sync(Entity2.class);//5 changes: id default value, name nullability, count2 type, drop id_seq3, add id_seq2
-		Entity2 e = new Entity2();
-		e.count2 = 123;
-		e = db.insert(e);
+		Entity2 e = db.insert(new Entity2(null, 123));
 		assertNull(e.name);
 		assertEquals(123, e.count2.intValue());
 	}
@@ -151,8 +143,12 @@ public class TestBasics extends AbstractDatabaseTest {
 	public void testAlterColumn3() throws Exception {
 		new SchemaGenerator(db).sync(Entity2.class);//5 changes: id default value, name nullability, count2 type, drop id_seq2, add id_seq3
 		new SchemaGenEx(db, 5).sync(Entity2Altered.class);
-		Entity2 e = new Entity2();
-		e.count2 = 123;
-		db.insert(e);//name is null, NOT NULL constraint must throw exception
+		db.insert(new Entity2(null, 123));//name is null, NOT NULL constraint must throw exception
+	}
+
+	@Test
+	public void testNoChanges() throws Exception {
+		new SchemaGenerator(db).sync(EntityWithTypes.class);
+		new SchemaGenEx(db, 0).sync(EntityWithTypes.class);
 	}
 }

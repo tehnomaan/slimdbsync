@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.*;
 import java.util.*;
+import java.util.stream.Stream;
 
 import com.google.gson.Gson;
 
@@ -24,6 +25,7 @@ public class PgAdapter implements DatabaseAdapter {
 
 	private String schema;
 	private Collection<UniqueDef> uniques = new ArrayList<>();
+	private Collection<CheckDef> checks = new ArrayList<>();
 
 	public PgAdapter(String schema) {
 		this.schema = schema;
@@ -59,14 +61,33 @@ public class PgAdapter implements DatabaseAdapter {
 						col.sourceSequence = r.defaultValue.substring(9, r.defaultValue.length() - 12);
 					return col;
 				}).collect(toMap(cdef -> cdef.name, cdef -> cdef));
-		uniques.addAll(db.sql("SELECT conname, conrelid::regclass, conkey::character varying FROM pg_constraint WHERE conrelid::regclass::character varying=? AND contype=?", tablename, "u").stream(PgUnique.class).map(pgu -> {
-			UniqueDef u = new UniqueDef();
-			u.name = pgu.conname;
-			u.tableName = pgu.conrelid;
-			String[] colnames = mapCols.values().stream().sorted((c1, c2) -> c1.ordinal - c2.ordinal).map(c -> c.name).toArray(String[]::new);
+		String[] colnames = mapCols.values().stream().sorted((c1, c2) -> (c1.ordinal < c2.ordinal ? -1 : 1)).map(c -> c.name).toArray(String[]::new);
+
+		String sql = "SELECT conname, conrelid::regclass, conkey::character varying FROM pg_constraint " +
+				"WHERE connamespace::regnamespace::character varying=? AND conrelid::regclass::character varying=? AND contype=?";
+		uniques.addAll(db.sql(sql, schema, tablename, "u").stream(PgUnique.class).map(pgu -> {
+			UniqueDef udef = new UniqueDef();
+			udef.name = pgu.conname;
+			udef.tableName = tablename;
 			int[] ordinals = new Gson().fromJson(pgu.conkey.replace('{', '[').replace('}', ']'), int[].class);
-			u.columns = Arrays.stream(ordinals).mapToObj(o -> colnames[o]).toArray(String[]::new);
-			return u;
+			udef.columns = Arrays.stream(ordinals).mapToObj(o -> colnames[o - 1]).toArray(String[]::new);
+			return udef;
+		}).collect(toList()));
+
+		sql = "SELECT conname, conrelid::regclass, connamespace::regnamespace, conkey::character varying, consrc FROM pg_constraint " +
+				"WHERE connamespace::regnamespace::character varying=? AND conrelid::regclass::character varying=? AND contype=?";
+		checks.addAll(db.sql(sql, schema, tablename, "c").stream(PgCheck.class).map(pgc -> {
+			int[] ordinals = new Gson().fromJson(pgc.conkey.replace('{', '[').replace('}', ']'), int[].class);
+			CheckDef cdef = new CheckDef(pgc.conname, tablename, colnames[ordinals[0] - 1]);
+			// Cannot use simple Scanner.findAll-method, since it is not available in Java 1.8
+			try(Scanner s = new Scanner(pgc.consrc)) {
+				String pattern = "'([a-zA-Z0-9_]+)'";
+				Stream.Builder<String> builder = Stream.builder();
+		        while (s.findInLine(pattern) != null)
+		            builder.accept(s.match().group(1));
+				cdef.validValues = builder.build().toArray(String[]::new);
+			}
+			return cdef;
 		}).collect(toList()));
 		return mapCols;
 	}
@@ -95,6 +116,11 @@ public class PgAdapter implements DatabaseAdapter {
 	}
 
 	@Override
+	public Collection<CheckDef> loadCurrentChecks(Database db) throws Exception {
+		return checks;
+	}
+
+	@Override
 	public Collection<IndexDef> loadCurrentIndexes(Database db) throws Exception {
 		final String sql = "SELECT * FROM pg_indexes WHERE schemaname=?";
 		return db.sql(sql, schema).stream(PgIndex.class).map(pgi -> {
@@ -102,9 +128,9 @@ public class PgAdapter implements DatabaseAdapter {
 			idef.name = pgi.indexname;
 			idef.tableName = pgi.tablename;
 			idef.isUniqueIndex = pgi.indexdef.toUpperCase().contains("CREATE UNIQUE INDEX");
-			idef.columns = pgi.indexdef.substring(pgi.indexdef.indexOf('('),pgi.indexdef.indexOf(')')).split(",");
+			idef.columns = pgi.indexdef.substring(pgi.indexdef.indexOf('(') + 1,pgi.indexdef.indexOf(')')).split(",");
 			return idef;
-		}).collect(toList());
+		}).filter(idef -> !idef.isUniqueIndex).collect(toList());//ignore database-created unique indexes (for pkey & chec constraints)
 	}
 
 	@Override
@@ -211,6 +237,17 @@ public class PgAdapter implements DatabaseAdapter {
 	@Override
 	public String dropUnique(UniqueDef u) {
 		return "ALTER TABLE \"" + u.tableName + "\" DROP CONSTRAINT " + u.name + ";" + ENDL;
+	}
+
+	@Override
+	public String createCheck(CheckDef checkDef) {
+		String vals = Arrays.stream(checkDef.validValues).map(v -> "'" + v + "'").collect(joining(","));
+		return "ALTER TABLE \"" + checkDef.tableName + "\" ADD CHECK (\"" + checkDef.columnName + "\" IN (" + vals + "));" + ENDL;
+	}
+
+	@Override
+	public String dropCheck(CheckDef checkDef) {
+		return "ALTER TABLE \"" + checkDef.tableName + "\" DROP CONSTRAINT " + checkDef.name + ";" + ENDL;
 	}
 
 	@Override

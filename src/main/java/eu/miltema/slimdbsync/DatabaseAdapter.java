@@ -48,6 +48,14 @@ public interface DatabaseAdapter {
 	Collection<UniqueDef> loadCurrentUniques(Database db) throws Exception;
 
 	/**
+	 * Load current check constraints from database
+	 * @param db database link
+	 * @return check constraint definitions
+	 * @throws Exception when any error occurs
+	 */
+	Collection<CheckDef> loadCurrentChecks(Database db) throws Exception;
+
+	/**
 	 * Load current indexes from database
 	 * @param db database link
 	 * @return index definitions
@@ -193,6 +201,18 @@ public interface DatabaseAdapter {
 	 * @return DDL for dropping unique constraint
 	 */
 	String dropUnique(UniqueDef uniqueDef);
+
+	/**
+	 * @param checkDef check constraint definition
+	 * @return DDL for creating check constraint
+	 */
+	String createCheck(CheckDef checkDef);
+
+	/**
+	 * @param checkDef check constraint definition
+	 * @return DDL for dropping check constraint
+	 */
+	String dropCheck(CheckDef checkDef);
 
 	/**
 	 * @param indexDef index definition

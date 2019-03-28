@@ -11,6 +11,6 @@ public class IndexDef {
 
 	@Override
 	public String toString() {
-		return name + "/" + Arrays.stream(columns).collect(Collectors.joining(","));
+		return tableName + "/" + Arrays.stream(columns).collect(Collectors.joining(","));
 	}
 }

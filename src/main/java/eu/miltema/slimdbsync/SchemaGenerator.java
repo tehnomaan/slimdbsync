@@ -5,6 +5,7 @@ import eu.miltema.slimdbsync.pg.PgAdapter;
 import eu.miltema.slimorm.*;
 import java.util.*;
 import java.util.function.Consumer;
+
 import static java.util.stream.Collectors.*;
 import javax.persistence.*;
 import java.sql.Statement;
@@ -70,6 +71,7 @@ public class SchemaGenerator {
 		}
 		initModelForeignKeys(entityClasses);
 		initModelUniques(entityClasses);
+		initModelChecks(entityClasses);
 		initModelIndexes(entityClasses);
 	}
 
@@ -121,6 +123,18 @@ public class SchemaGenerator {
 		}
 	}
 
+	private void initModelChecks(Class<?>[] entityClasses) {
+		ctx.modelChecks = new HashMap<>();
+		for(Class<?> clazz : entityClasses) {
+			EntityProperties eprop = db.getDialect().getProperties(clazz);
+			eprop.fields.stream().filter(fprop -> fprop.fieldType.isEnum()).forEach(fprop -> {
+				CheckDef cdef = new CheckDef(null, eprop.tableName, fprop.columnName);
+				cdef.validValues = Arrays.stream(fprop.fieldType.getEnumConstants()).map(c -> c.toString()).toArray(String[]::new);
+				ctx.modelChecks.put(cdef.toString(), cdef);
+			});
+		}
+	}
+
 	private void initModelIndexes(Class<?>[] entityClasses) {
 		ctx.modelIndexes = new HashMap<>();
 		for(Class<?> clazz : entityClasses) {
@@ -145,6 +159,7 @@ public class SchemaGenerator {
 		ctx.dbPrimaryKeys = dbAdapter.loadCurrentPrimaryKeys(db).stream().collect(toMap(pk -> pk.table, pk -> pk));
 		ctx.dbForeignKeys = dbAdapter.loadCurrentForeignKeys(db).stream().collect(toMap(fk -> fk.localTable + "/" + fk.localColumn, fk -> fk));
 		ctx.dbUniques = dbAdapter.loadCurrentUniques(db).stream().collect(toMap(u -> u.toString(), u -> u));
+		ctx.dbChecks = dbAdapter.loadCurrentChecks(db).stream().collect(toMap(u -> u.toString(), u -> u));
 		ctx.dbIndexes = dbAdapter.loadCurrentIndexes(db).stream().collect(toMap(u -> u.toString(), u -> u));
 	}
 
@@ -162,6 +177,8 @@ public class SchemaGenerator {
 		detectRemovedForeignKeys(sb);
 		detectNewUniques(sb);
 		detectRemovedUniques(sb);
+		detectNewChecks(sb);
+		detectRemovedChecks(sb);
 		detectNewIndexes(sb);
 		detectRemovedIndexes(sb);
 		if (dropUnused) detectRemovedTables(sb);
@@ -186,14 +203,28 @@ public class SchemaGenerator {
 		ctx.modelUniques.keySet().stream().
 			filter(uname -> !ctx.dbUniques.containsKey(uname)).
 			map(uname -> ctx.modelUniques.get(uname)).
-			forEach(u -> sb.append(dbAdapter.createUnique(u)));
+			forEach(udef -> sb.append(dbAdapter.createUnique(udef)));
 	}
 
 	private void detectRemovedUniques(StringBuilder sb) {
 		ctx.dbUniques.keySet().stream().
 			filter(uname -> !ctx.modelUniques.containsKey(uname)).
 			map(uname -> ctx.dbUniques.get(uname)).
-			forEach(u -> sb.append(dbAdapter.dropUnique(u)));
+			forEach(uudef -> sb.append(dbAdapter.dropUnique(uudef)));
+	}
+
+	private void detectNewChecks(StringBuilder sb) {
+		ctx.modelChecks.keySet().stream().
+			filter(cname -> !ctx.dbChecks.containsKey(cname)).
+			map(cname -> ctx.modelChecks.get(cname)).
+			forEach(cdef -> sb.append(dbAdapter.createCheck(cdef)));
+	}
+
+	private void detectRemovedChecks(StringBuilder sb) {
+		ctx.dbChecks.keySet().stream().
+			filter(cname -> !ctx.modelChecks.containsKey(cname)).
+			map(cname -> ctx.dbChecks.get(cname)).
+			forEach(cdef -> sb.append(dbAdapter.dropCheck(cdef)));
 	}
 
 	private void detectNewIndexes(StringBuilder sb) {
@@ -207,7 +238,6 @@ public class SchemaGenerator {
 		ctx.dbIndexes.keySet().stream().
 			filter(iname -> !ctx.modelIndexes.containsKey(iname)).
 			map(iname -> ctx.dbIndexes.get(iname)).
-			filter(idef -> !idef.isUniqueIndex).//don't drop unique indexes; these are used for @Unique columns (at least in postgre)
 			forEach(idef -> sb.append(dbAdapter.dropIndex(idef)));
 	}
 
