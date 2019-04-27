@@ -9,7 +9,7 @@ Establish database link:
 
 ```java
 Database db = new Database("org.postgresql.Driver", "jdbc:postgresql://localhost:5432/demoDB", "demouser", "password");
-new DatabaseSync(db).sync(Employee.class, EmployeeDetails.class);
+new SchemaGenerator(db).sync(Employee.class, EmployeeDetails.class);
 ```
 
 # Dependencies
@@ -18,7 +18,7 @@ Add SlimDbSync dependency into build.gradle:
 
 ```gradle
 dependencies {
-    implementation 'eu.miltema:slim-db-sync:x.y.z'
+    implementation 'eu.miltema:slim-db-sync:1.0.0'
 }
 ```
 
