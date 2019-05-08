@@ -1,11 +1,8 @@
 package eu.miltema.slimdbsync.test;
 
 import static org.junit.Assert.*;
-
-import java.sql.SQLException;
-
+import java.sql.*;
 import org.junit.*;
-
 import eu.miltema.slimdbsync.SchemaGenerator;
 
 public class TestBasics extends AbstractDatabaseTest {
@@ -150,5 +147,25 @@ public class TestBasics extends AbstractDatabaseTest {
 	public void testNoChanges() throws Exception {
 		new SchemaGenerator(db).sync(EntityWithTypes.class);
 		new SchemaGenEx(db, 0).sync(EntityWithTypes.class);
+	}
+
+	@Test
+	public void testColumnOrder() throws Exception {
+		new SchemaGenerator(db).sync(Entity2.class);
+		long id = db.insert(new Entity2("John Smith", 123456)).id;
+		Object[] record = new Object[3];
+		db.transaction((db, conn) -> {
+			try (Statement stmt = conn.createStatement()) {
+				try (ResultSet rs = stmt.executeQuery("SELECT * FROM entity2")) {
+					rs.next();
+					for(int i = 0; i < 3; i++)
+						record[i] = rs.getObject(i + 1);
+				}
+				return 0L;
+			}
+		});
+		assertEquals(id + "", record[0].toString());
+		assertEquals("John Smith", record[1]);
+		assertEquals(123456 + "", record[2].toString());
 	}
 }

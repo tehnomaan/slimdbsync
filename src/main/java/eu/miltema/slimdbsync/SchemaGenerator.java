@@ -59,12 +59,15 @@ public class SchemaGenerator {
 			EntityProperties eprop = db.getDialect().getProperties(clazz);
 			TableDef table = new TableDef();
 			table.name = eprop.tableName;
-			table.columns = eprop.fields.stream().map(fprop -> {
-				ModelColumnDef c = new ModelColumnDef(eprop, fprop, dbAdapter);
-				if (c.sourceSequence != null)
-					ctx.modelSequenceNames.add(c.sourceSequence);
-				return c;
-			}).collect(toMap(c -> c.name, c -> c));
+			table.columns = eprop.fields.stream()
+				.map(fprop -> {
+					ModelColumnDef c = new ModelColumnDef(eprop, fprop, dbAdapter);
+					if (c.sourceSequence != null)
+						ctx.modelSequenceNames.add(c.sourceSequence);
+					return c;
+				})
+				.peek(coldef -> table.columnOrder.add(coldef.name))
+				.collect(toMap(c -> c.name, c -> c));
 			ctx.modelTables.put(table.name, table);
 			if (eprop.idField != null)
 				ctx.modelPrimaryKeys.put(table.name, new PrimaryKeyDef(table.name, eprop.idField.columnName, null));
@@ -276,7 +279,7 @@ public class SchemaGenerator {
 
 	private void detectNewColumns(TableDef newTable, StringBuilder sb) {
 		Map<String, ColumnDef> existingCols = ctx.dbTables.get(newTable.name).columns;
-		newTable.columns.values().stream().
+		newTable.columnOrder.stream().map(cname -> newTable.columns.get(cname)).
 			filter(col -> !existingCols.containsKey(col.name)).
 			peek(col -> messageElements.add(col.name)).
 			forEach(col -> sb.append(dbAdapter.addColumn(newTable.name, col)));

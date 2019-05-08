@@ -135,7 +135,7 @@ public class PgAdapter implements DatabaseAdapter {
 
 	@Override
 	public String createTableWithColumns(TableDef tableDef) {
-		String columns = tableDef.columns.values().stream().map(coldef -> getColumnDefinition(coldef)).collect(joining("," + ENDL + "  "));
+		String columns = tableDef.columnOrder.stream().map(cname -> tableDef.columns.get(cname)).map(coldef -> getColumnDefinition(coldef)).collect(joining("," + ENDL + "  "));
 		return "CREATE TABLE \"" + tableDef.name + "\"(" + ENDL + "  " + columns + ENDL + ");" + ENDL;
 	}
 
