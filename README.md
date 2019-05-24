@@ -18,7 +18,7 @@ Add SlimDbSync dependency into build.gradle:
 
 ```gradle
 dependencies {
-    implementation 'eu.miltema:slim-db-sync:1.0.1'
+    implementation 'eu.miltema:slim-db-sync:1.0.2'
 }
 ```
 

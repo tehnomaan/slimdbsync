@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import org.junit.*;
 
 import eu.miltema.slimdbsync.SchemaGenerator;
+import eu.miltema.slimorm.RecordNotFoundException;
 
 public class TestManyToOne extends AbstractDatabaseTest {
 
@@ -55,5 +56,15 @@ public class TestManyToOne extends AbstractDatabaseTest {
 		e.id = 99999;//invalid id
 		EntityFKey ef = db.insert(new EntityFKey("John", e));
 		assertEquals(99999, db.getById(EntityFKeyNoConstraint.class, ef.id).entity1Id.intValue());
+	}
+
+	@Test(expected = RecordNotFoundException.class)
+	public void testCascadeDelete() throws Exception {
+		new SchemaGenerator(db).sync(Entity1.class, EntityFKey.class);
+		Entity1 e = new Entity1();
+		db.insert(e);
+		EntityFKey ef = db.insert(new EntityFKey("John", e));
+		db.delete(Entity1.class, e.id);
+		db.getById(EntityFKey.class, ef.id);
 	}
 }

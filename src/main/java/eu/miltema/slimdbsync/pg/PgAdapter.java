@@ -224,7 +224,7 @@ public class PgAdapter implements DatabaseAdapter {
 	@Override
 	public String createForeignKey(ForeignKeyDef foreignKeyDef) {
 		return "ALTER TABLE \"" + foreignKeyDef.localTable + "\" ADD FOREIGN KEY (\"" + foreignKeyDef.localColumn +
-				"\") REFERENCES \"" + foreignKeyDef.foreignTable + "\"(\""+ foreignKeyDef.foreignColumn + "\");" + ENDL;
+				"\") REFERENCES \"" + foreignKeyDef.foreignTable + "\"(\""+ foreignKeyDef.foreignColumn + "\") ON DELETE CASCADE;" + ENDL;
 	}
 
 	@Override
